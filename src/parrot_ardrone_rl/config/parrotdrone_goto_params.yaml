@@ -1,0 +1,9 @@
+mav_drone: #namespace
+    env_name: 'ParrotDroneGoto-v0'
+    #qlearn parameters
+    alpha: 0.1
+    gamma: 0.7
+    epsilon: 0.9
+    epsilon_discount: 0.999
+    nepisodes: 500
+    nsteps: 1000
