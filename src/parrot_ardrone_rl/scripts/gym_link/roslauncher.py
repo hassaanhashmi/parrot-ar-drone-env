@@ -30,6 +30,7 @@ class ROSLauncher(object):
         else:
             assert False, "No Package Path was found for ROS apckage ==>" + str(self._rospackage_name)
 
+
     def restart(self):
         if self._path_launch_file_name == None:
             assert False, "No Package Path was found for ROS apckage ==>" + str(self._rospackage_name)
