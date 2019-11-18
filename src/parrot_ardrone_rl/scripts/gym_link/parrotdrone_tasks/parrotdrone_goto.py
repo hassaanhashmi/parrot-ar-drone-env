@@ -2,9 +2,9 @@
 import rospy
 import rospkg
 import rosparam
-import numpy
+import numpy as np
 from gym import spaces
-from gym_link import parrotdrone_env
+from gym_link.parrotdrone_env import ParrotDroneEnv
 from gym.envs.registration import register
 from geometry_msgs.msg import Point, Pose, Twist, Vector3
 from geometry_msgs.msg import Vector3
@@ -12,7 +12,7 @@ from tf.transformations import euler_from_quaternion
 from gym_link.roslauncher import ROSLauncher
 import os
 
-class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
+class ParrotDroneGotoEnv(ParrotDroneEnv):
     def __init__(self):
         """
         Make parrotdrone learn how to go to a point in world
@@ -33,10 +33,10 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
     def _load_config_params(self):
 
         # Load Params from the desired Yaml file
-        config_file_path = os.path.join(rospkg.RosPack().get_path("parrotdrone_rl"),\
-                            "src/gym_link/parrotdrone_tasks/config/parrotdrone_goto.yaml") 
+        config_file_path = os.path.join(rospkg.RosPack().get_path("parrot_ardrone_rl"),\
+                            "scripts/gym_link/parrotdrone_tasks/config/parrotdrone_goto.yaml") 
         parameters_list=rosparam.load_file(config_file_path)
-        for params, namespace in paramlist:
+        for params, namespace in parameters_list:
             rosparam.upload_params(namespace,params)
 
         # Continuous action space
@@ -52,12 +52,12 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
         self.reward_range = (-np.inf, np.inf)
 
         self.init_vel_vec = Twist()
-        self.init_vel_vec.linear.x  = rospy.get_param('/parrotdrone/init_speed_vector/linear_x')
-        self.init_vel_vec.linear.y  = rospy.get_param('/parrotdrone/init_speed_vector/linear_y')
-        self.init_vel_vec.linear.z  = rospy.get_param('/parrotdrone/init_speed_vector/linear_z')
-        self.init_vel_vec.angular.x = rospy.get_param('/parrotdrone/init_speed_vector/angular_x')
-        self.init_vel_vec.angular.y = rospy.get_param('/parrotdrone/init_speed_vector/angular_y')
-        self.init_vel_vec.angular.z = rospy.get_param('/parrotdrone/init_speed_vector/angular_z')
+        self.init_vel_vec.linear.x  = rospy.get_param('/parrotdrone/init_velocity_vector/linear_x')
+        self.init_vel_vec.linear.y  = rospy.get_param('/parrotdrone/init_velocity_vector/linear_y')
+        self.init_vel_vec.linear.z  = rospy.get_param('/parrotdrone/init_velocity_vector/linear_z')
+        self.init_vel_vec.angular.x = rospy.get_param('/parrotdrone/init_velocity_vector/angular_x')
+        self.init_vel_vec.angular.y = rospy.get_param('/parrotdrone/init_velocity_vector/angular_y')
+        self.init_vel_vec.angular.z = rospy.get_param('/parrotdrone/init_velocity_vector/angular_z')
 
         # Get WorkSpace Cube Dimensions
         self.work_space_x_max = rospy.get_param("/parrotdrone/work_space/x_max")
@@ -68,18 +68,22 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
         self.work_space_z_min = rospy.get_param("/parrotdrone/work_space/z_min")
 
         # Maximum Quaternion values
-        self.max_qw = rospy.get_param("/parrotdrone/max_orientation_w")
-        self.max_qx = rospy.get_param("/parrotdrone/max_orientation_x")
-        self.max_qy = rospy.get_param("/parrotdrone/max_orientation_y")
-        self.max_qz = rospy.get_param("/parrotdrone/max_orientation_z")
+        self.max_qw = rospy.get_param("/parrotdrone/max_orientation/w")
+        self.max_qx = rospy.get_param("/parrotdrone/max_orientation/x")
+        self.max_qy = rospy.get_param("/parrotdrone/max_orientation/y")
+        self.max_qz = rospy.get_param("/parrotdrone/max_orientation/z")
 
         # Maximum velocity values
-        self.max_vel_lin_x = rospy.get_param("/parrotdrone/max_linear_velocity_x")
-        self.max_vel_lin_y = rospy.get_param("/parrotdrone/max_linear_velocity_y")
-        self.max_vel_lin_z = rospy.get_param("/parrotdrone/max_linear_velocity_z")
-        self.max_vel_ang_x = rospy.get_param("/parrotdrone/max_linear_angular_x")
-        self.max_vel_ang_y = rospy.get_param("/parrotdrone/max_linear_angular_y")
-        self.max_vel_ang_z = rospy.get_param("/parrotdrone/max_linear_angular_z")
+        self.max_vel_lin_x = rospy.get_param("/parrotdrone/max_velocity_vector/linear_x")
+        self.max_vel_lin_y = rospy.get_param("/parrotdrone/max_velocity_vector/linear_y")
+        self.max_vel_lin_z = rospy.get_param("/parrotdrone/max_velocity_vector/linear_z")
+        self.max_vel_ang_x = rospy.get_param("/parrotdrone/max_velocity_vector/angular_x")
+        self.max_vel_ang_y = rospy.get_param("/parrotdrone/max_velocity_vector/angular_y")
+        self.max_vel_ang_z = rospy.get_param("/parrotdrone/max_velocity_vector/angular_z")
+
+        #Front camera resolution
+        self.front_camera_height = rospy.get_param("/parrotdrone/front_cam_res/height")
+        self.front_camera_width = rospy.get_param("/parrotdrone/front_cam_res/width")
 
         # Get Desired Point to Get
         self.desired_pose = Pose()
@@ -129,7 +133,7 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
 
         self.numeric_observation_space = spaces.Box(numeric_low, numeric_high, dtype=np.float32)
         self.image_observation_space = spaces.Box(low=0, high=255, shape=(self.front_camera_height, self.front_camera_width, 3), dtype=np.uint8)
-        self.observation_space = spaces.Tuple(self.numeric_observation_space, self.image_observation_space)
+        self.observation_space = spaces.Tuple([self.numeric_observation_space, self.image_observation_space])
 
 
         # rospy.logdebug("ACTION SPACES TYPE===>"+str(self.action_space))
@@ -163,11 +167,11 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
         # For Info Purposes
         self.cumulated_reward = 0.0
         # We get the initial pose to measure the distance from the desired point.
-        self.previous_distance_from_des_point = \
-        self.get_distance_from_desired_point(self.get_current_gt_pose().position)
+        curr_pose = self.current_gt_pose
+        self.previous_distance_from_des_point = self.get_distance_from_desired_point(curr_pose.position)
 
         # self.previous_difference_from_des_orientation = \
-        # self.get_difference_from_desired_orientation(self.get_current_gt_pose().orientation)
+        # self.get_difference_from_desired_orientation(self.current_gt_pose.orientation)
 
     def _set_action(self, action):
         """
@@ -198,26 +202,26 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
         """
         #rospy.logdebug("Start Get Observation ==>")
         # We get the global pose and velocity data as observation
-        curr_gt_pose = self.get_current_gt_pose()
-        curr_gt_vel = self.get_current_gt_vel()
+        curr_gt_pose = self.current_gt_pose
+        curr_gt_vel = self.current_gt_vel
+        curr_front_cam= self.current_front_camera
 
-        observations = [curr_gt_pose.position.x,\
-                        curr_gt_pose.position.y,\ 
-                        curr_gt_pose.position.z,\
-                        curr_gt_pose.orientation.w,\
-                        curr_gt_pose.orientation.x,\
-                        curr_gt_pose.orientation.y,\
-                        curr_gt_pose.orientation.z,\
-                        curr_gt_vel.linear.x,\
-                        curr_gt_vel.linear.y,\
-                        curr_gt_vel.linear.z,\
-                        curr_gt_vel.angular.x,\
-                        curr_gt_vel.angular.y,\
-                        curr_gt_vel.angular.z]
-
+        numeric_obs = np.array([curr_gt_pose.position.x,
+                        curr_gt_pose.position.y, 
+                        curr_gt_pose.position.z,
+                        curr_gt_pose.orientation.w,
+                        curr_gt_pose.orientation.x,
+                        curr_gt_pose.orientation.y,
+                        curr_gt_pose.orientation.z,
+                        curr_gt_vel.linear.x,
+                        curr_gt_vel.linear.y,
+                        curr_gt_vel.linear.z,
+                        curr_gt_vel.angular.x,
+                        curr_gt_vel.angular.y,
+                        curr_gt_vel.angular.z])
         # rospy.logdebug("Observations==>"+str(observations))
         # rospy.logdebug("END Get Observation ==>")
-        return observations
+        return [numeric_obs, curr_front_cam]
 
     def _is_done(self, observations):
         """
@@ -391,7 +395,7 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
 
         curr_roll, curr_pitch, curr_yaw = euler_from_quaternion([current_orientation[1],\
                                                                  current_orientation[2],\
-                                                                 current_orientattion[3],\
+                                                                 current_orientation[3],\
                                                                  current_orientation[0]])
         self.max_roll = rospy.get_param("/parrotdrone/max_roll")
         self.max_pitch = rospy.get_param("/parrotdrone/max_pitch")
@@ -417,9 +421,9 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
         :return:
         """
         curr_position = np.array([current_position.x, current_position.y, current_position.z])
-        des_position = np.array([self.desired_pose.pose.position.x,\
-                                self.desired_pose.pose.position.y,\
-                                self.desired_pose.pose.position.z])
+        des_position = np.array([self.desired_pose.position.x,\
+                                self.desired_pose.position.y,\
+                                self.desired_pose.position.z])
         distance = self.get_distance_between_points(curr_position, des_position)
 
         return distance

@@ -1,5 +1,11 @@
 build/
 devel/
-parrot_ardrone/
-.catkin_workspace
 src/CMakeLists.txt
+geometry2/
+vision_opencv/
+parrot_ardrone/
+src/parrot_ardrone_rl/training_results/
+.rosinstall.bak
+.catkin_workspace
+.vscode
+*.pyc

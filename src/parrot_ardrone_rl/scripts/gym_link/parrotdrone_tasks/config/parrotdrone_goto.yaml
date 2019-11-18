@@ -1,5 +1,8 @@
 parrotdrone: #namespace
-
+    
+    env_name: 'ParrotDroneGoto-v0'
+    nepisodes: 400
+    nsteps: 1000
     geodesic_distance: False
 
     #Action Space Ranges
@@ -11,7 +14,7 @@ parrotdrone: #namespace
     angular_turn_speed: 0.05 # Lienare speed when turning
     angular_speed: 0.3 # Angular speed when turning Left or Right
 
-    init_speed_vector:
+    init_velocity_vector: #intial velocity at start of the episode
       linear_x: 0.0
       linear_y: 0.0
       linear_z: 0.0
@@ -19,25 +22,33 @@ parrotdrone: #namespace
       angular_y: 0.0
       angular_z: 0.0
 
-
     
     work_space: # 3D cube in which Drone is allowed to move
-      x_max: 13.0
-      x_min: -1.0
-      y_max: 5.0
-      y_min: -1.0
-      z_max: 3.0
-      z_min: -1.0
+      x_max: 50.0
+      x_min: -50.0
+      y_max: 50.0
+      y_min: -50.0
+      z_max: 50.0
+      z_min: 0.0
 
-    max_orientation_w: 99999999
-    max_orientation_x: 99999999
-    max_orientation_y: 99999999
-    max_orientation_z: 99999999
+    max_orientation: # Max orientation of Drone movement
+      w: 99999999
+      x: 99999999
+      y: 99999999
+      z: 99999999
 
-    max_roll: 1.57 # Max roll after which we end the episode
-    max_pitch: 1.57 # Max roll after which we end the episode
-    max_yaw: inf # Max yaw, its 4 because its bigger the pi, its a complete turn actually the maximum
+    max_velocity_vector:
+      linear_x: 30.0
+      linear_y: 30.0
+      linear_z: 30.0
+      angular_x: 30.0
+      angular_y: 30.0
+      angular_z: 30.0
 
+    front_cam_res:
+      width: 640
+      height: 360
+    
     desired_position:
       x: 10.0
       y: 5.0
@@ -50,8 +61,6 @@ parrotdrone: #namespace
 
 
     desired_point_epsilon: 0.05 # Error acceptable to consider that it has reached the desired point
-
-
     closer_to_point_reward: 10 # We give points for getting closer to the desired point
     not_ending_point_reward: 1 # Points given if we just dont crash
     end_episode_points: 200 # Points given when ending an episode

@@ -1,8 +1,9 @@
 import rospy
 import gym
 from gym.utils import seeding
-from .gazebo_connection import GazeboConnection
+from gym_link.gazebo_connection import GazeboConnection
 from parrot_ardrone_rl.msg import RLExperimentInfo
+from gym_link.roslauncher import ROSLauncher
 
 class RobotGazeboEnv(gym.Env):
 
@@ -21,11 +22,10 @@ class RobotGazeboEnv(gym.Env):
         
         self.ros_launcher = ROSLauncher(rospackage_name=ros_pkg_name,\
                             launch_file_name=launch_file)
+        self.gazebo.unpauseSim()
         self._setup_subscribers()
         self._setup_publishers()
-        self._setup_services()
         self._check_all_systems_ready()
-        self._setup_services()
         self.gazebo.pauseSim()
 
         rospy.logdebug("END init RobotGazeboEnv and Paused Sim")
@@ -119,7 +119,8 @@ class RobotGazeboEnv(gym.Env):
         """Resets a simulation
         """
         rospy.logdebug("RESET SIM START")
-        #self.gazebo.unpauseSim()
+        self.gazebo.unpauseSim()
+        self._check_all_systems_ready()
         self._set_init_pose()
         self.gazebo.pauseSim()
         self.gazebo.resetSim()
@@ -141,7 +142,6 @@ class RobotGazeboEnv(gym.Env):
         """
         self._check_all_subscribers_ready()
         self._check_all_publishers_ready()
-        self._check_all_services_ready()
         return True
     
     def _check_all_subscribers_ready(self):
@@ -195,7 +195,7 @@ class RobotGazeboEnv(gym.Env):
         """
         try:
             rospy.wait_for_service(name, timeout)
-        except (rospy.ServiceException, rospy.ROSException), e:
+        except (rospy.ServiceException, rospy.ROSException):
             rospy.logfatal("Service %s unavailable.", name)
 
     def _get_obs(self):

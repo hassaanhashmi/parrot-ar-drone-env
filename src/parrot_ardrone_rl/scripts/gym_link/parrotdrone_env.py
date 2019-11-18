@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-import numpy
-import rospy
 import time
-from gym_link import robot_gazebo_env
-from std_msgs.msg import Float64, Empty
-from sensor_msgs.msg import JointState, Image, LaserScan, PointCloud2
+import rospy
+import numpy as np
+from std_msgs.msg import Empty
+from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose
-from sensor_msgs.msg import Range, Imu
-from gym_link.roslauncher import ROSLauncher
-from gym_link.ros_gazebo_env import RobotGazeboEnv
+from cv_bridge import CvBridge, CvBridgeError
+from gym_link.robot_gazebo_env import RobotGazeboEnv
 
 
 class ParrotDroneEnv(RobotGazeboEnv):
@@ -47,7 +45,12 @@ class ParrotDroneEnv(RobotGazeboEnv):
 
 #Callback functions for Topic Subscribers uesd by TASK environments
     def _front_camera_cb(self, msg):
-        self._current_front_camera = msg
+        self._current_front_camera = Image()
+        try:
+            cv_image = CvBridge().imgmsg_to_cv2(msg, desired_encoding="rgb8")
+        except CvBridgeError as cv_error:
+            print(cv_error)
+        self._current_front_camera = cv_image
     
     def _gt_pose_cb(self, msg):
         self._current_gt_pose = msg
@@ -63,6 +66,18 @@ class ParrotDroneEnv(RobotGazeboEnv):
         rospy.Subscriber('/drone/front_camera/image_raw', Image, self._front_camera_cb)
         rospy.Subscriber('/drone/gt_pose', Pose , callback=self._gt_pose_cb)
         rospy.Subscriber('/drone/gt_vel' , Twist, callback=self._gt_vel_cb)
+
+    @property
+    def current_gt_pose(self):
+        return self._current_gt_pose
+
+    @property
+    def current_gt_vel(self):
+        return self._current_gt_vel
+
+    @property
+    def current_front_camera(self):
+        return self._current_front_camera
 
     
     def _check_all_subscribers_ready(self):
@@ -88,9 +103,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         self._check_publisher_ready(self._publish_cmd_vel.name,self._publish_cmd_vel)
         self._check_publisher_ready(self._publish_takeoff.name,self._publish_takeoff)
         self._check_publisher_ready(self._publish_land.name,self._publish_land)
-        
-    
-
+     
 
 
     # Methods that the TrainingEnvironment will need to define here as virtual
@@ -133,7 +146,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         """
         Execute the velocity command
         """
-        self._CheckCmdVelConnection()
+        self._check_publisher_ready(self._publish_cmd_vel.name,self._publish_cmd_vel)
         self._publish_cmd_vel.publish(vel_msg)
 
     def ExecuteTakeoff(self, altitude=0.8):
@@ -142,7 +155,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         Gazebo Pause and Unpause to make it a self-contained action
         """
         self.gazebo.unpauseSim()
-        self._CheckTakeoffConnection()
+        self._check_publisher_ready(self._publish_takeoff.name,self._publish_takeoff)
         self._publish_takeoff.publish(Empty())
         self.wait_for_height(desired_height=altitude, to_land=False, epsilon=0.05, update_rate=10)
         self.gazebo.pauseSim()
@@ -153,7 +166,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         Gazebo Pause and Unpause to make it a self-contained action
         """
         self.gazebo.unpauseSim()
-        self._CheckLandConnection()
+        self._check_publisher_ready(self._publish_land.name,self._publish_land)
         self._publish_land.publish(Empty())
         self.wait_for_height(desired_height=land_height, to_land=True, epsilon=0.05, update_rate=10)
         self.gazebo.pauseSim()
@@ -165,7 +178,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         """
         rate = rospy.Rate(update_rate)
         while not rospy.is_shutdown():
-            current_height = self._CheckCurrentGtPose().position.z
+            current_height = self._check_subscriber_ready('/drone/gt_pose', Pose).position.z
 
             if to_land:
                 takeoff_height_achieved = (current_height <= desired_height)
@@ -177,10 +190,4 @@ class ParrotDroneEnv(RobotGazeboEnv):
             rate.sleep()
     
 
-
-    def get_current_gt_pose(self):
-        return self._current_gt_pose
-
-    def get_current_gt_vel(self):
-        return self._current_gt_vel
 

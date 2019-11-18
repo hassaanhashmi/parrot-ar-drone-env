@@ -1,0 +1,8 @@
+- git:
+    local-name: src/geometry2
+    uri: https://github.com/ros/geometry2
+    version: 0.6.5
+- git:
+    local-name: src/vision_opencv
+    uri: https://github.com/ros-perception/vision_opencv
+    version: 1.13.0

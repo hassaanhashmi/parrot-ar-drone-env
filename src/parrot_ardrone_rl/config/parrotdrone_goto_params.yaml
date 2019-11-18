@@ -1,4 +1,4 @@
-mav_drone: #namespace
+parrotdrone: #namespace
     env_name: 'ParrotDroneGoto-v0'
     #qlearn parameters
     alpha: 0.1
