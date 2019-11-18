@@ -99,7 +99,7 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
 
         # We place the Maximum and minimum values of the X,Y,Z,W,X,Y,Z of the pose
 
-        high = np.array([self.work_space_x_max,
+        numeric_high = np.array([self.work_space_x_max,
                             self.work_space_y_max,
                             self.work_space_z_max,
                             self.max_qw,
@@ -113,7 +113,7 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
                             self.max_vel_ang_y,
                             self.max_vel_ang_z])
 
-        low = np.array([self.work_space_x_min,
+        numeric_low = np.array([self.work_space_x_min,
                         self.work_space_y_min,
                         self.work_space_z_min,
                         -1*self.max_qw,
@@ -127,7 +127,10 @@ class ParrotDroneGotoEnv(parrotdrone_env.ParrotDroneEnv):
                         -1*self.max_vel_ang_y,
                         -1*self.max_vel_ang_z])
 
-        self.observation_space = spaces.Box(low, high, dtype=np.float32)
+        self.numeric_observation_space = spaces.Box(numeric_low, numeric_high, dtype=np.float32)
+        self.image_observation_space = spaces.Box(low=0, high=255, shape=(self.front_camera_height, self.front_camera_width, 3), dtype=np.uint8)
+        self.observation_space = spaces.Tuple(self.numeric_observation_space, self.image_observation_space)
+
 
         # rospy.logdebug("ACTION SPACES TYPE===>"+str(self.action_space))
         # rospy.logdebug("OBSERVATION SPACES TYPE===>" +

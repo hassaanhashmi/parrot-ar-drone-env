@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import gym
-from openai_ros.reg_gym_env import Register_Gym_Env
+from gym_link.reg_gym_env import Register_Gym_Env
 import rospy
 import os
 

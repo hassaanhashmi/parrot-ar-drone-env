@@ -2,23 +2,34 @@ import rospy
 import gym
 from gym.utils import seeding
 from .gazebo_connection import GazeboConnection
-from openai_ros.msg import RLExperimentInfo
+from parrot_ardrone_rl.msg import RLExperimentInfo
 
 class RobotGazeboEnv(gym.Env):
 
-    def __init__(self, robot_name_space, controllers_list, reset_controls, start_init_physics_parameters=True, reset_world_or_sim="SIMULATION"):
+    def __init__(self, ros_pkg_name, launch_file, start_init_physics_parameters=True, reset_world_or_sim="SIMULATION"):
+
 
         # To reset Simulations
         rospy.logdebug("START init RobotGazeboEnv")
         self.gazebo = GazeboConnection(start_init_physics_parameters,reset_world_or_sim)
-        self.reset_controls = reset_controls
         self.seed()
 
         # Set up ROS related variables
         self.episode_num = 0
         self.cumulated_episode_reward = 0
         self.reward_pub = rospy.Publisher('/openai/reward', RLExperimentInfo, queue_size=1)
-        rospy.logdebug("END init RobotGazeboEnv")
+        
+        self.ros_launcher = ROSLauncher(rospackage_name=ros_pkg_name,\
+                            launch_file_name=launch_file)
+        self._setup_subscribers()
+        self._setup_publishers()
+        self._setup_services()
+        self._check_all_systems_ready()
+        self._setup_services()
+        self.gazebo.pauseSim()
+
+        rospy.logdebug("END init RobotGazeboEnv and Paused Sim")
+
 
     # Env methods
     def seed(self, seed=None):
@@ -103,49 +114,20 @@ class RobotGazeboEnv(gym.Env):
 
     # Extension methods
     # ----------------------------
-    def _reset_sim_before(self):
-        rospy.logdebug("RESET SIM START")
-        if self.reset_controls :
-            rospy.logdebug("RESET CONTROLLERS")
-            self.gazebo.unpauseSim()
-            self._check_all_systems_ready()
-            self._set_init_pose()
-            rospy.logwarn("Set to initial pose")
-            self.gazebo.pauseSim()
-            
-        else:
-            self.gazebo.resetSim()
-            rospy.logwarn("DONT RESET CONTROLLERS")
-            self.gazebo.unpauseSim()
-            self._check_all_systems_ready()
-            self._set_init_pose()
-            rospy.logwarn("Set to initial pose")
-            self.gazebo.pauseSim()
-            
-    
-    def _reset_sim_after(self):
-
-        if self.reset_controls:
-            self.gazebo.resetSim()
-            self.gazebo.unpauseSim()
-            self._check_all_systems_ready()
-            rospy.logwarn("All systems checked")
-            self.gazebo.pauseSim()
-        else:
-            self.gazebo.resetSim()
-            self.gazebo.unpauseSim()
-            self._check_all_systems_ready()
-            rospy.logwarn("All systems checked")
-            self.gazebo.pauseSim()
-        rospy.logdebug("RESET SIM END")
-        return True
-
 
     def _reset_sim(self):
         """Resets a simulation
         """
-        self._reset_sim_before()
-        self._reset_sim_after()
+        rospy.logdebug("RESET SIM START")
+        #self.gazebo.unpauseSim()
+        self._set_init_pose()
+        self.gazebo.pauseSim()
+        self.gazebo.resetSim()
+        self.gazebo.unpauseSim()
+        self._check_all_systems_ready()
+        self.gazebo.pauseSim()
+        rospy.logdebug("RESET SIM END")
+        return True
 
     def _set_init_pose(self):
         """Sets the Robot in its init pose
@@ -154,10 +136,67 @@ class RobotGazeboEnv(gym.Env):
 
     def _check_all_systems_ready(self):
         """
-        Checks that all the sensors, publishers and other simulation systems are
+        Checks that all the subscribers, publishers, services and other simulation systems are
         operational.
         """
+        self._check_all_subscribers_ready()
+        self._check_all_publishers_ready()
+        self._check_all_services_ready()
+        return True
+    
+    def _check_all_subscribers_ready(self):
+        """
+        Checks that all the subscribers are ready for connection
+        """
         raise NotImplementedError()
+
+    def _check_all_publishers_ready(self):
+        """
+        Checks that all the sensors are ready for connection
+        """
+        raise NotImplementedError()
+    
+    def _setup_subscribers(self):
+        """
+        Sets up all the subscribers relating to robot state
+        """
+        raise NotImplementedError()
+
+    def _setup_publishers(self):
+        """
+        Sets up all the publishers relating to robot state
+        """
+        raise NotImplementedError()
+
+    def _check_subscriber_ready(self, name, type, timeout=5.0):
+        """
+        Waits for a sensor topic to get ready for connection
+        """
+        var = None        
+        while var is None and not rospy.is_shutdown():
+            try:
+                var = rospy.wait_for_message(name, type, timeout)
+            except:
+                rospy.logfatal('Sensor topic "%s" is not available. Waiting...', name)
+        return var
+
+    def _check_publisher_ready(self, name, obj, timeout=5.0):
+        """
+        Waits for a publisher to get response
+        """
+        start_time = rospy.Time.now()
+        while obj.get_num_connections() == 0 and not rospy.is_shutdown():
+            if (rospy.Time.now() - start_time).to_sec() >= timeout:
+                rospy.logfatal('No subscriber found for the publisher %s. Exiting...', name)
+    
+    def _check_service_ready(self, name, timeout=5.0):
+        """
+        Waits for a service to get ready
+        """
+        try:
+            rospy.wait_for_service(name, timeout)
+        except (rospy.ServiceException, rospy.ROSException), e:
+            rospy.logfatal("Service %s unavailable.", name)
 
     def _get_obs(self):
         """Returns the observation.

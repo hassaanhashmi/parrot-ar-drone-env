@@ -9,10 +9,10 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose
 from sensor_msgs.msg import Range, Imu
 from gym_link.roslauncher import ROSLauncher
+from gym_link.ros_gazebo_env import RobotGazeboEnv
 
 
-
-class ParrotDroneEnv(robot_gazebo_env.RobotGazeboEnv):
+class ParrotDroneEnv(RobotGazeboEnv):
     """Superclass for all PX4 MavDrone environments.
     """
     def __init__(self):
@@ -21,135 +21,74 @@ class ParrotDroneEnv(robot_gazebo_env.RobotGazeboEnv):
         or reset the controllers if simulation is running.
 
         Sensors for RL observation space (by topic list): \\
-        
-        * /drone/gt_pose
-        * /drone/ge_vel
+        * /drone/front_camera/image_raw: RGB Camera facing front. 640x360
+        * /drone/gt_pose: Get position and orientation in Global space
+        * /drone/gt_vel: Get the linear velocity , the angular doesnt record anything.
         }
         
         Actuations for RL action space (by topic list):
         * /cmd_vel: Move the Drone Around when you have taken off.
         * /drone/takeoff: Takeoff drone from current position
         * /drone/land: Land drone at current xy position
-
-        Args:
         """
-
         rospy.logdebug("Start ParrotDroneEnv INIT...")
 
-        #Sleep rate for when trying for Publishers
-        self._rate = rospy.Rate(10)
-
-        self.controllers_list = []
-        self.robot_name_space = ""
+        #Spawn Parrot AR Drone through launch file
+        self.ros_pkg_name="drone_construct"
+        self.launch_file_name="put_drone_in_world.launch"
         
-        super(ParrotDroneEnv, self).__init__(controllers_list=self.controllers_list,
-                                             robot_name_space=self.robot_name_space,
-                                             reset_controls=False,
-                                             start_init_physics_parameters=False,
-                                             reset_world_or_sim="WORLD")
-        self.gazebo.unpauseSim()
-
-        self.ros_launcher = ROSLauncher(rospackage_name="drone_construct",\
-                            launch_file_name="put_drone_in_worlds.launch")
-        
-        
-        self._CheckAllSensors()
-        rospy.Subscriber('/drone/gt_pose', Pose , callback=self._gt_pose_cb)
-        rospy.Subscriber('/drone/gt_vel' , Twist, callback=self._gt_vel_cb)
-        
-        self._publish_cmd_vel = rospy.Publisher('/cmd_vel',       Twist, queue_size=1)
-        self._publish_takeoff = rospy.Publisher('/drone/takeoff', Empty, queue_size=1)
-        self._publish_land    = rospy.Publisher('/drone/land',    Empty, queue_size=1)
-        self._CheckAllPublishers()
-
-        self.gazebo.pauseSim()
+        super(ParrotDroneEnv, self).__init__(
+            ros_pkg_name=self.ros_pkg_name,
+            launch_file=self.launch_file_name,
+            start_init_physics_parameters=True,
+            reset_world_or_sim='WORLD')
 
         rospy.logdebug("Finished ParrotDroneEnv INIT...")
 
 #Callback functions for Topic Subscribers uesd by TASK environments
+    def _front_camera_cb(self, msg):
+        self._current_front_camera = msg
+    
     def _gt_pose_cb(self, msg):
         self._current_gt_pose = msg
 
     def _gt_vel_cb(self, msg):
         self._current_gt_vel = msg
+    
 
 # Methods needed by the RobotGazeboEnv
     # ----------------------------
 
-    
+    def _setup_subscribers(self):
+        rospy.Subscriber('/drone/front_camera/image_raw', Image, self._front_camera_cb)
+        rospy.Subscriber('/drone/gt_pose', Pose , callback=self._gt_pose_cb)
+        rospy.Subscriber('/drone/gt_vel' , Twist, callback=self._gt_vel_cb)
 
-    def _CheckAllRLTopics(self):
-        """
-        Checks that all the sensors, publishers, services and other simulation systems are
-        operational.
-        """
-        self._CheckAllSensors()
-        self._CheckAllPublishers()
-        return True
     
-
-    def _CheckAllSensors(self):
-        #rospy.logdebug("CHECK ALL SENSORS CONNECTION:")
-        self._CheckCurrentGtPose()
-        self._CheckCurrentGtVel()
+    def _check_all_subscribers_ready(self):
+        #rospy.logdebug("CHECK ALL Subscribers:")
+        self._check_subscriber_ready('/drone/front_camera/image_raw', Image)
+        self._check_subscriber_ready('/drone/gt_pose', Pose)
+        self._check_subscriber_ready('/drone/gt_vel', Twist)
         #rospy.logdebug("All Sensors CONNECTED and READY!")
     
-    def _CheckCurrentGtPose(self):
-
-        self._current_gt_pose = None
-        while self._current_gt_pose is None and not rospy.is_shutdown():
-            try:
-                self._current_gt_pose = rospy.wait_for_message("/drone/gt_pose", Pose, timeout=5.0)
-            except:
-                rospy.logdebug("Current /drone/gt_pose not ready, retrying for getting Global Pose")
-
-        return self._current_gt_pose
+    def _setup_publishers(self):
+        #rospy.logdebug("CHECK ALL PUBLISHERS CONNECTION:")
+        self._publish_cmd_vel = rospy.Publisher('/cmd_vel',       Twist, queue_size=1)
+        self._publish_takeoff = rospy.Publisher('/drone/takeoff', Empty, queue_size=1)
+        self._publish_land    = rospy.Publisher('/drone/land',    Empty, queue_size=1)
+        #rospy.logdebug("All Publishers CONNECTED and READY!")
     
-    def _CheckCurrentGtVel(self):
-
-        self._current_gt_vel = None
-        while self._current_gt_vel is None and not rospy.is_shutdown():
-            try:
-                selself._ratevel = rospy.wait_for_message("/drone/gt_vel", Pose, timeout=5.0)
-            except:
-                rospy.logdebug("Current /drone/gt_vel not ready, retrying for getting Global Velocity")
-
-        return self._current_gt_vel
-
-
-    def _CheckAllPublishers(self):
+    def _check_all_publishers_ready(self):
         """
         Checks that all the publishers are working
         :return:
         """
         #rospy.logdebug("CHECK ALL PUBLISHERS CONNECTION:")
-        self._CheckCmdVelConnection()
-        self._CheckTakeoffConnection()
-        self._CheckLandConnection()
+        self._check_publisher_ready(self._publish_cmd_vel.name,self._publish_cmd_vel)
+        self._check_publisher_ready(self._publish_takeoff.name,self._publish_takeoff)
+        self._check_publisher_ready(self._publish_land.name,self._publish_land)
         
-    def _CheckCmdVelConnection(self):
-        while self._publish_cmd_vel.get_num_connections() == 0 and not rospy.is_shutdown():
-            try:
-                self._rate.sleep()
-            except rospy.ROSInterruptException:
-                pass
-        rospy.logdebug("_publish_cmd_vel Publisher Connected")
-
-    def _CheckTakeoffConnection(self):
-        while self._publish_take.get_num_connections() == 0 and not rospy.is_shutdown():
-            try:
-                self._rate.sleep()
-            except rospy.ROSInterruptException:
-                pass
-        rospy.logdebug("_local_takeoff Publisher Connected")
-
-    def _CheckLandConnection(self):
-        while self._publish_land.get_num_connections() == 0 and not rospy.is_shutdown():
-            try:
-                self._rate.sleep()
-            except rospy.ROSInterruptException:
-                pass
-        rospy.logdebug("_publish_land Publisher Connected")
     
 
 
@@ -225,19 +164,15 @@ class ParrotDroneEnv(robot_gazebo_env.RobotGazeboEnv):
         :param: to_land: If True, we will wait until value is smaller than the one given
         """
         rate = rospy.Rate(update_rate)
-        start_wait_time = rospy.get_rostime().to_sec()
-        end_wait_time = 0.0
-
         while not rospy.is_shutdown():
             current_height = self._CheckCurrentGtPose().position.z
 
             if to_land:
-                takeoff_height_achieved = (current_height <= heigh_value_to_check)
+                takeoff_height_achieved = (current_height <= desired_height)
             else:
-                takeoff_height_achieved = (current_height >= heigh_value_to_check)
+                takeoff_height_achieved = (current_height >= desired_height)
 
             if takeoff_height_achieved:
-                end_wait_time = rospy.get_rostime().to_sec()
                 break
             rate.sleep()
     
