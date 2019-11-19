@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 import os
-import numpy as np
+import sys
 import gym
-import numpy
 import time
+import numpy as np
 from gym import wrappers
 # ROS packages required
 import rospy
 import rospkg
 import rosparam
 # import training environment
-from gym_link.make_gym_env import GymMake
+from parrot_gym.roscore_handler import Roscore
+from parrot_gym.make_gym_env import GymMake
 
 
 if __name__ == '__main__':
-    
-    rospy.init_node('parrotdrone_goto_ddpg', anonymous=True, log_level=rospy.WARN)
+    roscore = Roscore()
+    roscore.run()
+    time.sleep(1)
+    rospy.init_node('parrotdrone_test', anonymous=True, log_level=rospy.WARN)
 
     # Init Gym ENV
     task_env = 'ParrotDroneGoto-v0'
@@ -29,7 +32,7 @@ if __name__ == '__main__':
     env = wrappers.Monitor(env, outdir, force=True)
     rospy.loginfo("Monitor Wrapper started")
 
-    last_time_steps = numpy.ndarray(0)
+    last_time_steps = np.ndarray(0)
 
     
     nepisodes = 500
@@ -38,7 +41,9 @@ if __name__ == '__main__':
     for x in range(nepisodes):
         rospy.logdebug("############### START EPISODE=>" + str(x))
         observation = env.reset()
+        print(observation[0].shape)
         print(observation[1].shape)
         for i in range(nsteps):
-            rospy.sleep(0.01)
+            time.sleep(0.001)
     env.close()
+    roscore.terminate()

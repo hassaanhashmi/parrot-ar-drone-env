@@ -7,7 +7,7 @@ from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose
 from cv_bridge import CvBridge, CvBridgeError
-from gym_link.robot_gazebo_env import RobotGazeboEnv
+from parrot_gym.robot_gazebo_env import RobotGazeboEnv
 
 
 class ParrotDroneEnv(RobotGazeboEnv):

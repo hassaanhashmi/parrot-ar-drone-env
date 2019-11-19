@@ -1,8 +1,9 @@
+<?xml version="1.0"?>
 <launch>
     <!-- This version uses the openai_ros environments -->
     <rosparam command="load" file="$(find parrot_ardrone_rl)/config/parrotdrone_goto_params.yaml" />
     <!-- Launch the training system -->
     <!-- <include file="$(find drone_construct)/launch/start_world.launch"/>
     <include file="$(find drone_construct)/launch/put_drone_in_world.launch"/> -->
-    <node pkg="parrot_ardrone_rl" name="parrotdrone_goto_ddpg" type="DDPG_goto_experiment.py" output="screen"/>
+    <node pkg="parrot_ardrone_rl" name="parrotdrone_test" type="test.py" output="screen"/>
 </launch>

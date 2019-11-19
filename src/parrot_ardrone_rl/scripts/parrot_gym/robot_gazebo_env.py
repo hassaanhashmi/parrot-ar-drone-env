@@ -1,9 +1,9 @@
 import rospy
 import gym
 from gym.utils import seeding
-from gym_link.gazebo_connection import GazeboConnection
+from parrot_gym.gazebo_connection import GazeboConnection
 from parrot_ardrone_rl.msg import RLExperimentInfo
-from gym_link.roslauncher import ROSLauncher
+from parrot_gym.roslauncher import ROSLauncher
 
 class RobotGazeboEnv(gym.Env):
 
