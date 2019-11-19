@@ -1,3 +1,6 @@
+
+#Original code taken from https://answers.ros.org/question/215600/how-can-i-run-roscore-from-python/?answer=292433#post-id-292433
+
 import subprocess
 import shlex
 import sys
