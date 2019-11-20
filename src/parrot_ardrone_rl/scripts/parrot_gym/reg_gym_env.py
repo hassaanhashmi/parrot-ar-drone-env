@@ -17,23 +17,23 @@ def Register_Gym_Env(task_env, max_episode_steps_per_episode=10000):
 
         register(
             id=task_env,
-            entry_point='parrot_gym.parrotdrone_tasks.parrotdrone_goto:ParrotDroneGotoEnv',
+            entry_point='parrotdrone_tasks.parrotdrone_goto:ParrotDroneGotoEnv',
             max_episode_steps=max_episode_steps_per_episode,
         )
 
         # import our training environment
-        from parrot_gym.parrotdrone_tasks.parrotdrone_goto import ParrotDroneGotoEnv
+        from parrotdrone_tasks.parrotdrone_goto import ParrotDroneGotoEnv
     
     elif task_env == 'ParrotDroneFollow-v0':
 
         register(
             id=task_env,
-            entry_point='parrot_gym.parrotdrone_tasks.parrotdrone_follow:ParrotDroneFollowEnv',
+            entry_point='parrotdrone_tasks.parrotdrone_follow:ParrotDroneFollowEnv',
             max_episode_steps=max_episode_steps_per_episode,
         )
 
         # import our training environment
-        from parrot_gym.parrotdrone_tasks.parrotdrone_follow import ParrotDroneGotoEnv
+        from parrotdrone_tasks.parrotdrone_follow import ParrotDroneGotoEnv
 
     else:
         result = False

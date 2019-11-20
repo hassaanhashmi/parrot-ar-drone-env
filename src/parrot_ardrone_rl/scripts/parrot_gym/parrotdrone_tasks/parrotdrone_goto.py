@@ -4,12 +4,12 @@ import rospkg
 import rosparam
 import numpy as np
 from gym import spaces
-from parrot_gym.parrotdrone_env import ParrotDroneEnv
+from parrotdrone_env import ParrotDroneEnv
 from gym.envs.registration import register
 from geometry_msgs.msg import Point, Pose, Twist, Vector3
 from geometry_msgs.msg import Vector3
 from tf.transformations import euler_from_quaternion
-from parrot_gym.roslauncher import ROSLauncher
+from roslauncher import ROSLauncher
 import os
 
 class ParrotDroneGotoEnv(ParrotDroneEnv):

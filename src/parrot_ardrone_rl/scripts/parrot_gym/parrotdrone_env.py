@@ -7,10 +7,10 @@ from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Pose
 from cv_bridge import CvBridge, CvBridgeError
-from parrot_gym.robot_gazebo_env import RobotGazeboEnv
+from ros_gazebo_env import RosGazeboEnv
 
 
-class ParrotDroneEnv(RobotGazeboEnv):
+class ParrotDroneEnv(RosGazeboEnv):
     """Superclass for all PX4 MavDrone environments.
     """
     def __init__(self):
@@ -59,7 +59,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
         self._current_gt_vel = msg
     
 
-# Methods needed by the RobotGazeboEnv
+# Methods needed by the RosGazeboEnv
     # ----------------------------
 
     def _setup_subscribers(self):
@@ -107,7 +107,7 @@ class ParrotDroneEnv(RobotGazeboEnv):
 
 
     # Methods that the TrainingEnvironment will need to define here as virtual
-    # because they will be used in RobotGazeboEnv GrandParentClass and defined in the
+    # because they will be used in RosGazeboEnv GrandParentClass and defined in the
     # TrainingEnvironment.
     # ----------------------------
     def _set_init_pose(self):

@@ -1,17 +1,17 @@
 import rospy
 import gym
 from gym.utils import seeding
-from parrot_gym.gazebo_connection import GazeboConnection
+from gazebo_connection import GazeboConnection
 from parrot_ardrone_rl.msg import RLExperimentInfo
-from parrot_gym.roslauncher import ROSLauncher
+from roslauncher import ROSLauncher
 
-class RobotGazeboEnv(gym.Env):
+class RosGazeboEnv(gym.Env):
 
     def __init__(self, ros_pkg_name, launch_file, start_init_physics_parameters=True, reset_world_or_sim="SIMULATION"):
 
 
         # To reset Simulations
-        rospy.logdebug("START init RobotGazeboEnv")
+        rospy.logdebug("START init RosGazeboEnv")
         self.gazebo = GazeboConnection(start_init_physics_parameters,reset_world_or_sim)
         self.seed()
 
@@ -28,7 +28,7 @@ class RobotGazeboEnv(gym.Env):
         self._check_all_systems_ready()
         self.gazebo.pauseSim()
 
-        rospy.logdebug("END init RobotGazeboEnv and Paused Sim")
+        rospy.logdebug("END init RosGazeboEnv and Paused Sim")
 
 
     # Env methods
@@ -65,12 +65,12 @@ class RobotGazeboEnv(gym.Env):
         return obs, reward, done, info
 
     def reset(self):
-        rospy.logdebug("Reseting RobotGazeboEnvironment")
+        rospy.logdebug("Reseting RosGazeboEnvironment")
         self._reset_sim()
         self._init_env_variables()
         self._update_episode()
         obs = self._get_obs()
-        rospy.logdebug("END Reseting RobotGazeboEnvironment")
+        rospy.logdebug("END Reseting RosGazeboEnvironment")
         return obs
 
     def close(self):
@@ -79,8 +79,8 @@ class RobotGazeboEnv(gym.Env):
         Use it for closing GUIS and other systems that need closing.
         :return:
         """
-        rospy.logdebug("Closing RobotGazeboEnvironment")
-        rospy.signal_shutdown("Closing RobotGazeboEnvironment")
+        rospy.logdebug("Closing RosGazeboEnvironment")
+        rospy.signal_shutdown("Closing RosGazeboEnvironment")
 
     def _update_episode(self):
         """

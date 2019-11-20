@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import gym
-from parrot_gym.reg_gym_env import Register_Gym_Env
+from reg_gym_env import Register_Gym_Env
 import rospy
 import os
 
