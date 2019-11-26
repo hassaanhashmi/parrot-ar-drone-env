@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
+from gazebo_msgs.msg import ODEPhysics
+from gazebo_msgs.src import DeleteModel
+from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
+from geometry_msgs.msg import Vector3
 import rospy
 from std_srvs.srv import Empty
-from gazebo_msgs.msg import ODEPhysics
-from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest, DeleteModel
 from std_msgs.msg import Float64
-from geometry_msgs.msg import Vector3
 
 class GazeboConnection():
     
@@ -13,8 +14,9 @@ class GazeboConnection():
         
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
-        self.reset_simulation_proxy = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
-        self.reset_world_proxy = rospy.ServiceProxy('/gazebo/reset_world', Empty)
+        self.reset_simulation_proxy = rospy.ServiceProxy(
+                                             '/gazebo/reset_simulation', Empty)
+        self.reset_world_proxy=rospy.ServiceProxy('/gazebo/reset_world', Empty)
 
         # Setup the Gravity Controle system
         service_name = '/gazebo/set_physics_properties'
@@ -22,11 +24,12 @@ class GazeboConnection():
         rospy.wait_for_service(service_name)
         rospy.logdebug("Service Found " + str(service_name))
 
-        self.set_physics = rospy.ServiceProxy(service_name, SetPhysicsProperties)
+        self.set_physics=rospy.ServiceProxy(service_name, SetPhysicsProperties)
         self.start_init_physics_parameters = start_init_physics_parameters
         self.reset_world_or_sim = reset_world_or_sim
         self.init_values()
-        # We always pause the simulation, important for legged robots learning
+        # We always pause the simulation, important for legged robots
+        #learning
         self.pauseSim()
 
     def pauseSim(self):
@@ -52,9 +55,10 @@ class GazeboConnection():
     
     def resetSim(self):
         """
-        This was implemented because some simulations, when reseted the simulation
-        the systems that work with TF break, and because sometime we wont be able to change them
-        we need to reset world that ONLY resets the object position, not the entire simulation
+        This was implemented because some simulations, when reseted the 
+        simulation the systems that work with TF break, and because 
+        sometime we wont be able to change them we need to reset world
+        that ONLY resets the object position, not the entire simulation
         systems.
         """
         if self.reset_world_or_sim == "SIMULATION":
@@ -94,8 +98,8 @@ class GazeboConnection():
         
     def init_physics_parameters(self):
         """
-        We initialise the physics parameters of the simulation, like gravity,
-        friction coeficients and so on.
+        We initialise the physics parameters of the simulation, like 
+        gravity, friction coeficients and so on.
         """
         self._time_step = Float64(0.001)
         self._max_update_rate = Float64(10000.0)
@@ -133,7 +137,8 @@ class GazeboConnection():
         rospy.logdebug(str(set_physics_request.gravity))
 
         result = self.set_physics(set_physics_request)
-        rospy.logdebug("Gravity Update Result==" + str(result.success) + ",message==" + str(result.status_message))
+        rospy.logdebug("Gravity Update Result==" + str(result.success) + 
+                        ",message==" + str(result.status_message))
 
         self.unpauseSim()
 
@@ -147,7 +152,9 @@ class GazeboConnection():
     def delete_model(self, model_name):
         """ Remove the model with 'modelName' from the Gazebo scene """
         # delete_model : gazebo_msgs/DeleteModel
-        del_model_prox = rospy.ServiceProxy('gazebo/delete_model', DeleteModel) # Handle to model spawner
-        # rospy.wait_for_service('gazebo/delete_model') # Wait for the model loader to be ready 
+        # Handle to model spawner
+        del_model_prox = rospy.ServiceProxy('gazebo/delete_model', DeleteModel) 
+        # rospy.wait_for_service('gazebo/delete_model') # Wait for the
+        #model loader to be ready 
         # FREEZES EITHER WAY
         del_model_prox(str(model_name)) # Remove from Gazebo

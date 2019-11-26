@@ -5,9 +5,10 @@ from gym import envs
 
 def Register_Gym_Env(task_env, max_episode_steps_per_episode=10000):
     """
-    Register Gym environment. This way we can load them with variable limits.
-    Here is where you have to PLACE YOUR NEW TASK ENV, to be registered and accesible.
-    return: False if the Task_Env wasnt registered, True if it was.
+    Register Gym environment. This way we can load them with variable 
+    limits. Here is where you have to PLACE YOUR NEW TASK ENV, to be 
+    registered and accesible. return: False if the Task_Env wasnt 
+    registered, True if it was.
     """
 
     result = True
@@ -38,11 +39,12 @@ def Register_Gym_Env(task_env, max_episode_steps_per_episode=10000):
     else:
         result = False
 
-    ###########################################################################
+    ####################################################################
 
     if result:
         # We check that it was really registered
         supported_gym_envs = [env_spec.id for env_spec in envs.registry.all()]
-        assert (task_env in supported_gym_envs), "The Task_Robot_ENV given is not Registered ==>" + str(task_env)
+        assert (task_env in supported_gym_envs), 
+               "The Task_Robot_ENV given is not Registered ==>" + str(task_env)
 
     return result

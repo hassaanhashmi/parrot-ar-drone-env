@@ -8,7 +8,9 @@ import rospy
 import rospkg
 import rosparam
 # import training environment
-sys.path.insert(1, '/home/hmi/Projects/catkin_ws/ParrotDrone-RL-Experiments/src/parrot_ardrone_rl/scripts/parrot_gym')
+
+sys.path.insert(1, '/home/hmi/Projects/catkin_ws/ParrotDrone-RL-Experiments/'+
+                    'src/parrot_ardrone_rl/scripts/parrot_gym')
 from roscore_handler import Roscore
 from make_gym_env import GymMake
 

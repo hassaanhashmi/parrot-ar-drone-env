@@ -1,50 +1,46 @@
 #!/usr/bin/env python3
-
-                            ####################################
-                            ####################################
-                            ####        In  Progress        ####
-                            ####################################
-                            ####################################
-
-
 import rospy
 import rospkg
 import rosparam
-import numpy
-from gym import spaces
-from parrot_gym import parrotdrone_env
+import numpy as np
+from gym.spaces import Box, Tuple
+from parrotdrone_env import ParrotDroneEnv
 from gym.envs.registration import register
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point, Pose, Twist, Vector3
 from geometry_msgs.msg import Vector3
-from tf.transformations import euler_from_quaternion
-from parrot_gym.roslauncher import ROSLauncher
+from tf.transformations import quaternion_to_euler
+from roslauncher import ROSLauncher
 import os
 
-class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
+class ParrotDroneGotoEnv(ParrotDroneEnv):
     def __init__(self):
         """
-        Make parrotdrone learn how to follow a trajectory
+        Make parrotdrone learn how to go to a point in world
         """
 
-        #ROSLauncher(rospackage_name="mavros_moveit", launch_file_name="px4_mavros_moveit.launch")
-        self._load_params()
+        ROSLauncher(rospackage_name="drone_construct", 
+                    launch_file_name="start_world.launch")
+        self._load_config_params()
 
         super(ParrotDroneGotoEnv, self).__init__()
 
 
-        self.vel_msg = TwistStamped()
-        self._rate = rospy.Rate(20.0) # ros run rate
+        self.vel_msg = Twist()
+        self._rate = rospy.Rate(10.0) # ros run rate
 
 
 
 
-    def _load_params(self):
+    def _load_config_params(self):
 
         # Load Params from the desired Yaml file
-        config_file_path = os.path.join(rospkg.RosPack().get_path("parrotdrone_rl"),\
-                            "src/parrot_gym/parrotdrone_tasks/config/parrotdrone_goto.yaml") 
+        rospkg_path = rospkg.RosPack().get_path("parrot_ardrone_rl")
+        config_file_name = "parrotdrone_goto.yaml"
+        config_file_path = os.path.join(rospkg_path,
+                            "scripts/parrot_gym/parrotdrone_tasks/config/"
+                            + str(config_file_name))
         parameters_list=rosparam.load_file(config_file_path)
-        for params, namespace in paramlist:
+        for params, namespace in parameters_list:
             rosparam.upload_params(namespace,params)
 
         # Continuous action space
@@ -52,89 +48,134 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         vv_range = rospy.get_param('/parrotdrone/lz_vel_range')
         rv_range = rospy.get_param('/parrotdrone/rot_vel_range')
         
-        self.action_space = spaces.Box(low=np.array([-hv_range, -hv_range, -vv_range, -rv_range]),\
-                                    high=np.array([hv_range, hv_range, vv_range, rv_range]),\
+        self.action_low= np.array([-hv_range, -hv_range, -vv_range, -rv_range])
+        self.action_high = np.array([hv_range, hv_range, vv_range, rv_range])
+        self.action_space=Box(low=self.action_low, high=self.action_high,
                                     dtype=np.float32)
 
-        # We set the reward range, which is not compulsory but here we do it.
         self.reward_range = (-np.inf, np.inf)
 
-        self.init_velocity_vector = TwistStamped()
-        self.init_velocity_vector.twist.linear.x = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/linear_x')
-        self.init_velocity_vector.twist.linear.y = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/linear_y')
-        self.init_velocity_vector.twist.linear.z = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/linear_z')
-        self.init_velocity_vector.twist.angular.x = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/angular_x')
-        self.init_velocity_vector.twist.angular.y = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/angular_y')
-        self.init_velocity_vector.twist.angular.z = rospy.get_param(\
-            '/parrotdrone/init_speed_vector/angular_z')
+        self.init_vel_vec = Twist()
+        self.init_vel_vec.linear.x  = rospy.get_param(
+                                  '/parrotdrone/init_velocity_vector/linear_x')
+        self.init_vel_vec.linear.y  = rospy.get_param(
+                                  '/parrotdrone/init_velocity_vector/linear_y')
+        self.init_vel_vec.linear.z  = rospy.get_param(
+                                  '/parrotdrone/init_velocity_vector/linear_z')
+        self.init_vel_vec.angular.x = rospy.get_param(
+                                 '/parrotdrone/init_velocity_vector/angular_x')
+        self.init_vel_vec.angular.y = rospy.get_param(
+                                 '/parrotdrone/init_velocity_vector/angular_y')
+        self.init_vel_vec.angular.z = rospy.get_param(
+                                 '/parrotdrone/init_velocity_vector/angular_z')
 
         # Get WorkSpace Cube Dimensions
-        self.work_space_x_max = rospy.get_param("/parrotdrone/work_space/x_max")
-        self.work_space_x_min = rospy.get_param("/parrotdrone/work_space/x_min")
-        self.work_space_y_max = rospy.get_param("/parrotdrone/work_space/y_max")
-        self.work_space_y_min = rospy.get_param("/parrotdrone/work_space/y_min")
-        self.work_space_z_max = rospy.get_param("/parrotdrone/work_space/z_max")
-        self.work_space_z_min = rospy.get_param("/parrotdrone/work_space/z_min")
+        self.work_space_x_max= rospy.get_param("/parrotdrone/work_space/x_max")
+        self.work_space_x_min= rospy.get_param("/parrotdrone/work_space/x_min")
+        self.work_space_y_max= rospy.get_param("/parrotdrone/work_space/y_max")
+        self.work_space_y_min= rospy.get_param("/parrotdrone/work_space/y_min")
+        self.work_space_z_max= rospy.get_param("/parrotdrone/work_space/z_max")
+        self.work_space_z_min= rospy.get_param("/parrotdrone/work_space/z_min")
 
         # Maximum Quaternion values
-        self.max_qw = rospy.get_param("/parrotdrone/max_orientation_w")
-        self.max_qx = rospy.get_param("/parrotdrone/max_orientation_x")
-        self.max_qy = rospy.get_param("/parrotdrone/max_orientation_y")
-        self.max_qz = rospy.get_param("/parrotdrone/max_orientation_z")
+        self.max_qw = rospy.get_param("/parrotdrone/max_orientation/w")
+        self.max_qx = rospy.get_param("/parrotdrone/max_orientation/x")
+        self.max_qy = rospy.get_param("/parrotdrone/max_orientation/y")
+        self.max_qz = rospy.get_param("/parrotdrone/max_orientation/z")
+
+        # Maximum velocity values
+        self.max_vel_lin_x = rospy.get_param(
+                                   "/parrotdrone/max_velocity_vector/linear_x")
+        self.max_vel_lin_y = rospy.get_param(
+                                   "/parrotdrone/max_velocity_vector/linear_y")
+        self.max_vel_lin_z = rospy.get_param(
+                                   "/parrotdrone/max_velocity_vector/linear_z")
+        self.max_vel_ang_x = rospy.get_param(
+                                  "/parrotdrone/max_velocity_vector/angular_x")
+        self.max_vel_ang_y = rospy.get_param(
+                                  "/parrotdrone/max_velocity_vector/angular_y")
+        self.max_vel_ang_z = rospy.get_param(
+                                  "/parrotdrone/max_velocity_vector/angular_z")
+
+        #Front camera resolution
+        self.front_cam_h = rospy.get_param("/parrotdrone/front_cam_res/height")
+        self.front_cam_w = rospy.get_param("/parrotdrone/front_cam_res/width")
 
         # Get Desired Point to Get
-        self.desired_pose = PoseStamped()
-        self.desired_pose.pose.position.x   = rospy.get_param("/parrotdrone/desired_position/x")
-        self.desired_pose.pose.position.y   = rospy.get_param("/parrotdrone/desired_position/y")
-        self.desired_pose.pose.position.z   = rospy.get_param("/parrotdrone/desired_position/z")
-        self.desired_pose.pose.orientation.w= rospy.get_param("/parrotdrone/desired_orientation/w")
-        self.desired_pose.pose.orientation.x= rospy.get_param("/parrotdrone/desired_orientation/x")
-        self.desired_pose.pose.orientation.y= rospy.get_param("/parrotdrone/desired_orientation/y")
-        self.desired_pose.pose.orientation.z= rospy.get_param("/parrotdrone/desired_orientation/z")
+        self.desired_pose = Pose()
+        self.desired_pose.position.x = rospy.get_param(
+                                             "/parrotdrone/desired_position/x")
+        self.desired_pose.position.y = rospy.get_param(
+                                             "/parrotdrone/desired_position/y")
+        self.desired_pose.position.z = rospy.get_param(
+                                             "/parrotdrone/desired_position/z")
+        self.desired_pose.orientation.w = rospy.get_param(
+                                          "/parrotdrone/desired_orientation/w")
+        self.desired_pose.orientation.x = rospy.get_param(
+                                          "/parrotdrone/desired_orientation/x")
+        self.desired_pose.orientation.y = rospy.get_param(
+                                          "/parrotdrone/desired_orientation/y")
+        self.desired_pose.orientation.z = rospy.get_param(
+                                          "/parrotdrone/desired_orientation/z")
 
 
         self.desired_pose_epsilon = rospy.get_param(
-            "/parrotdrone/desired_point_epsilon")
+                                          "/parrotdrone/desired_point_epsilon")
         
         self.geo_distance = rospy.get_param("/parrotdrone/geodesic_distance")
 
 
-        # We place the Maximum and minimum values of the X,Y,Z,W,X,Y,Z of the pose
+        # We place the Maximum and minimum values of the X,Y,Z,W,X,Y,Z 
+        # of the pose
 
-        high = np.array([self.work_space_x_max,
+        numeric_high = np.array([self.work_space_x_max,
                             self.work_space_y_max,
                             self.work_space_z_max,
                             self.max_qw,
                             self.max_qx,
                             self.max_qy,
-                            self.max_qz])
+                            self.max_qz,
+                            self.max_vel_lin_x,
+                            self.max_vel_lin_y,
+                            self.max_vel_lin_z,
+                            self.max_vel_ang_x,
+                            self.max_vel_ang_y,
+                            self.max_vel_ang_z])
 
-        low = np.array([self.work_space_x_min,
+        numeric_low = np.array([self.work_space_x_min,
                         self.work_space_y_min,
                         self.work_space_z_min,
                         -1*self.max_qw,
                         -1*self.max_qx,
                         -1*self.max_qy,
-                        -1*self.max_qz])
+                        -1*self.max_qz,
+                        -1*self.max_vel_lin_x,
+                        -1*self.max_vel_lin_y,
+                        -1*self.max_vel_lin_z,
+                        -1*self.max_vel_ang_x,
+                        -1*self.max_vel_ang_y,
+                        -1*self.max_vel_ang_z])
 
-        self.observation_space = spaces.Box(low, high, dtype=np.float32)
+        self.numeric_obs_space = Box(numeric_low, numeric_high, 
+                                     dtype=np.float32)
+        self.image_obs_space = Box(low=0, high=255, 
+                                  shape=(self.front_cam_h,self.front_cam_w, 3),
+                                  dtype=np.uint8)
+        self.observation_space = Tuple([self.numeric_obs_space, 
+                                        self.image_obs_space])
 
-        rospy.logdebug("ACTION SPACES TYPE===>"+str(self.action_space))
-        rospy.logdebug("OBSERVATION SPACES TYPE===>" +
-                    str(self.observation_space))
+
+        # rospy.logdebug("ACTION SPACES TYPE===>"+str(self.action_space))
+        # rospy.logdebug("OBSERVATION SPACES TYPE===>" +
+        #             str(self.observation_space))
 
         # Rewards
         self.closer_to_point_reward = rospy.get_param(
-            "/parrotdrone/closer_to_point_reward")
+                                        "/parrotdrone/closer_to_point_reward")
         self.not_ending_point_reward = rospy.get_param(
-            "/parrotdrone/not_ending_point_reward")
-        self.end_episode_points = rospy.get_param("/parrotdrone/end_episode_points")
-
+                                        "/parrotdrone/not_ending_point_reward")
+        self.end_episode_points = rospy.get_param(
+                                        "/parrotdrone/end_episode_points")
         self.cumulated_steps = 0.0
 
     def _set_init_pose(self):
@@ -142,52 +183,39 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         Sets the Robot in its init linear and angular speeds.
         Its preparing it to be reseted in the world.
         """
-        self.ExecuteAction(self.init_velocity_vector, epsilon=0.05, update_rate=10)
+        self.publish_vel(self.init_vel_vec, epsilon=0.05, update_rate=10)
         return True
 
     def _init_env_variables(self):
         """
-        Inits variables needed to be initialised each time we reset at the start
-        of an episode.
+        Inits variables needed to be initialised each time we reset at 
+        the start of an episode.
         :return:
         """
         self.gazebo.unpauseSim()
         
-        if self.get_current_state().connected:
-            #Send a few setpoints before starting
-            for i in (j for j in range(1,0,-1) if not rospy.is_shutdown()):
-                vel_msg = TwistStamped()
-                self._local_vel_pub.publish(vel_msg)
-                self._rate.sleep()
-            
-            #Set vehicle to offboard mode
-            # if not self.setMavMode("OFFBOARD",5):
-            #     rospy.logerr("OFFBOARD SUCCESSFUL!!!")
-            # else:
-            #     rospy.logerr("OFFBOARD FAILED!!!")
-            self.ArmTakeOff(arm=True, alt=3)
-
-        else:
-            rospy.logerr("NOT CONNECTED!!!!!!")
+        self.ExecuteTakeoff(altitude=0.8)
 
         # For Info Purposes
         self.cumulated_reward = 0.0
-        # We get the initial pose to measure the distance from the desired point.
-        curr_pose = self.get_current_pose()
-        self.previous_distance_from_des_point = \
-        self.get_distance_from_desired_point(curr_pose.pose.position)
+        # We get the initial pose to measure the distance from 
+        #the desired point.
+        curr_position = self.current_gt_pose.position
+        self.prev_dist_des_point = self.get_dist_des_point(curr_position)
 
-        self.previous_difference_from_des_orientation = \
-        self.get_difference_from_desired_orientation(curr_pose.pose.orientation)
+        # self.prev_diff_des_orient = \
+        # self.get_diff_des_orient(self.current_gt_pose.orientation)
 
     def _set_action(self, action):
         """
-        This set action will Set the linear and angular speed of the drone
-        based on the action number given.
-        :param action: The action integer that set s what movement to do next.
+        This set action will Set the linear and angular speed of the 
+        drone based on the action number given.
+        :param action: The action integer that set s what movement to do
+         next.
         """
         rospy.logdebug("Start Set Action ==>"+str(action))
-        # We convert the actions to speed movements to send to the parent class of Parrot
+        # We convert the actions to speed movements to send to the 
+        # parent class of Parrot
         action_vel = TwistStamped()
         action_vel.twist.linear.x   = action[0]
         action_vel.twist.linear.y   = action[1]
@@ -196,8 +224,9 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         action_vel.twist.angular.y  = 0.0
         action_vel.twist.angular.z  = action[3]
         
-        # We tell drone the linear and angular velocities to set to execute
-        self.ExecuteAction(action_vel, epsilon=0.05, update_rate=20)
+        # We tell drone the linear and angular velocities to set to 
+        # execute
+        self.publish_vel(action_vel, epsilon=0.05, update_rate=20)
         rospy.logdebug("END Set Action ==>"+str(action))
 
     def _get_obs(self):
@@ -207,21 +236,28 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         droneEnv API DOCS
         :return:
         """
-        rospy.logdebug("Start Get Observation ==>")
-        # We get the laser scan data
-        curr_pose = self.get_current_pose()
+        #rospy.logdebug("Start Get Observation ==>")
+        # We get the global pose and velocity data as observation
+        curr_gt_pose = self.current_gt_pose
+        curr_gt_vel = self.current_gt_vel
+        curr_front_cam= np.asarray(self.current_front_camera)
 
-        observations = [curr_pose.pose.position.x,\
-                        curr_pose.pose.position.y,\
-                        curr_pose.pose.position.z,\
-                        curr_pose.pose.orientation.w,\
-                        curr_pose.pose.orientation.x,\
-                        curr_pose.pose.orientation.y,\
-                        curr_pose.pose.orientation.z]
-
-        rospy.logdebug("Observations==>"+str(observations))
-        rospy.logdebug("END Get Observation ==>")
-        return observations
+        numeric_obs = np.array([curr_gt_pose.position.x,
+                        curr_gt_pose.position.y, 
+                        curr_gt_pose.position.z,
+                        curr_gt_pose.orientation.w,
+                        curr_gt_pose.orientation.x,
+                        curr_gt_pose.orientation.y,
+                        curr_gt_pose.orientation.z,
+                        curr_gt_vel.linear.x,
+                        curr_gt_vel.linear.y,
+                        curr_gt_vel.linear.z,
+                        curr_gt_vel.angular.x,
+                        curr_gt_vel.angular.y,
+                        curr_gt_vel.angular.z])
+        # rospy.logdebug("Observations==>"+str(observations))
+        # rospy.logdebug("END Get Observation ==>")
+        return [numeric_obs, curr_front_cam]
 
     def _is_done(self, observations):
         """
@@ -233,38 +269,32 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         """
 
         episode_done = False
-        current_pose = observations
+        current_pose = observations[:7]
         current_position = observations[:3]
-        current_orientation = observations[3:]
+        current_orientation = observations[3:7]
+        
 
         is_inside_workspace_now = self.is_inside_workspace(current_position)
         too_close_to_grnd       = self.too_close_to_ground(current_position[2])
         drone_flipped           = self.drone_has_flipped(current_orientation)
-        has_reached_des_pose    = self.is_in_desired_pose(current_pose, self.desired_pose_epsilon)
+        has_reached_des_pose    = self.is_in_desired_pose(current_pose, 
+                                                     self.desired_pose_epsilon)
 
         rospy.logwarn(">>>>>> DONE RESULTS <<<<<")
 
         if not is_inside_workspace_now:
-            rospy.logerr("is_inside_workspace_now=" +
-                         str(is_inside_workspace_now))
-        else:
-            rospy.logwarn("is_inside_workspace_now=" +
-                          str(is_inside_workspace_now))
+            rospy.logerr("Drone is outside workspace")
 
         if too_close_to_grnd:
-            rospy.logerr("too_close_to_ground=" + str(too_close_to_grnd))
-        else:
-            rospy.logwarn("too_close_to_ground=" + str(too_close_to_grnd))
+            rospy.logerr("Drone is too close to ground")
+        
 
         if drone_flipped:
-            rospy.logerr("drone_flipped="+str(drone_flipped))
-        else:
-            rospy.logwarn("drone_flipped="+str(drone_flipped))
+            rospy.logerr("Drone has flipped")
+        
 
         if has_reached_des_pose:
-            rospy.logerr("has_reached_des_pose="+str(has_reached_des_pose))
-        else:
-            rospy.logwarn("has_reached_des_pose="+str(has_reached_des_pose))
+            rospy.logerr("Drone has reached the desired pose")
 
         # We see if we are outside the Learning Space
         episode_done = not(is_inside_workspace_now) or\
@@ -290,22 +320,25 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         current_pose.pose.orientation.y = observations[5]
         current_pose.pose.orientation.z = observations[6]
         
+        curr_position = current_pose.pose.position
+        curr_orientation = current_pose.pose.orientation
 
-        distance_from_des_point = self.get_distance_from_desired_point(current_pose.pose.position)
+        dist_des_point = self.get_dist_des_point(curr_position)
         
-        difference_from_des_orientation = self.get_difference_from_desired_orientation(current_pose.pose.orientation)
+        diff_des_orientation = self.get_diff_des_orient(curr_orientation)
         
-        distance_difference = distance_from_des_point - self.previous_distance_from_des_point + \
-                                2*(difference_from_des_orientation - self.previous_difference_from_des_orientation)
+        distance_difference = dist_des_point - self.prev_dist_des_point + \
+                           2*(diff_des_orientation - self.prev_diff_des_orient)
 
         if not done:
 
-            # If there has been a decrease in the distance to the desired point, we reward it
+            # If there has been a decrease in the distance to the 
+            # desired point, we reward it
             if distance_difference < 0.0:
-                rospy.logwarn("DECREASE IN DISTANCE GOOD")
+                # rospy.logwarn("DECREASE IN DISTANCE GOOD")
                 reward = self.closer_to_point_reward
             else:
-                rospy.logerr("ENCREASE IN DISTANCE BAD")
+                # rospy.logerr("ENCREASE IN DISTANCE BAD")
                 reward = 0
 
         else:
@@ -314,23 +347,20 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
                 reward = self.end_episode_points
             else:
                 reward = -1*self.end_episode_points
-
-        self.previous_distance_from_des_point = distance_from_des_point
-        self.previous_difference_from_des_orientation = difference_from_des_orientation
-
-        rospy.logdebug("reward=" + str(reward))
+        
         self.cumulated_reward += reward
-        rospy.logdebug("Cumulated_reward=" + str(self.cumulated_reward))
         self.cumulated_steps += 1
-        rospy.logdebug("Cumulated_steps=" + str(self.cumulated_steps))
 
+        self.prev_dist_des_point = dist_des_point
+        self.prev_diff_des_orient = diff_des_orientation
         return reward
 
     # Internal TaskEnv Methods
 
     def is_in_desired_pose(self, current_pose, epsilon=0.05):
         """
-        It return True if the current position is similar to the desired poistion
+        It return True if the current position is similar to the desired
+        poistion
         """
 
         is_in_desired_pose = False
@@ -350,19 +380,6 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
                          np.all(current_pose >  desired_pose_minus)
 
 
-
-        rospy.logwarn("###### IS DESIRED POS ? ######")
-
-        rospy.logwarn("current_pose"+str(current_pose))
-
-        rospy.logwarn("desired_pose_plus"+str(desired_pose_plus) +\
-                      ",desired_pose_minus="+str(desired_pose_minus))
-
-        rospy.logwarn("pose_are_close"+str(pose_are_close))
-        rospy.logwarn("is_in_desired_pose"+str(is_in_desired_pos))
-
-        rospy.logwarn("############")
-
         return is_in_desired_pose
 
     def is_inside_workspace(self, current_position):
@@ -371,19 +388,12 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         """
         is_inside = False
 
-        rospy.logwarn("##### INSIDE WORK SPACE? #######")
-        rospy.logwarn("XYZ current_position"+str(current_position))
-        rospy.logwarn("work_space_x_max"+str(self.work_space_x_max) +
-                      ",work_space_x_min="+str(self.work_space_x_min))
-        rospy.logwarn("work_space_y_max"+str(self.work_space_y_max) +
-                      ",work_space_y_min="+str(self.work_space_y_min))
-        rospy.logwarn("work_space_z_max"+str(self.work_space_z_max) +
-                      ",work_space_z_min="+str(self.work_space_z_min))
-        rospy.logwarn("############")
-
-        if current_position[0] > self.work_space_x_min and current_position[0] <= self.work_space_x_max:
-            if current_position[1] > self.work_space_y_min and current_position[1] <= self.work_space_y_max:
-                if current_position[2] > self.work_space_z_min and current_position[2] <= self.work_space_z_max:
+        if current_position[0] > self.work_space_x_min and \
+            current_position[0] <= self.work_space_x_max:
+            if current_position[1] > self.work_space_y_min and \
+                current_position[1] <= self.work_space_y_max:
+                if current_position[2] > self.work_space_z_min and \
+                    current_position[2] <= self.work_space_z_max:
                     is_inside = True
 
         return is_inside
@@ -392,30 +402,25 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
         """
         Detects if there is something too close to the drone front
         """
-        rospy.logwarn("##### SONAR TOO CLOSE? #######")
-        rospy.logwarn("Current height"+str(current_position_z) +
-                      ",min_allowed_height="+str(self.min_height))
-        rospy.logwarn("############")
-
-        too_close = sonar_value < self.min_height
-
+        too_close = current_position_z < self.min_height
         return too_close
 
-    def drone_has_flipped(self, current_orientation):
+    def drone_has_flipped(self, curr_orient):
         """
         Based on the orientation RPY given states if the drone has flipped
         """
         has_flipped = True
 
-        curr_roll, curr_pitch, curr_yaw = euler_from_quaternion([current_orientation[1],\
-                                                                 current_orientation[2],\
-                                                                 current_orientattion[3],\
-                                                                 current_orientation[0]])
+        curr_roll, curr_pitch, curr_yaw = quaternion_to_euler([curr_orient[1],
+                                                               curr_orient[2],
+                                                               curr_orient[3],
+                                                               curr_orient[0]])
         self.max_roll = rospy.get_param("/parrotdrone/max_roll")
         self.max_pitch = rospy.get_param("/parrotdrone/max_pitch")
 
         rospy.logwarn("#### HAS FLIPPED? ########")
-        rospy.logwarn("RPY current_orientation"+str(curr_roll, curr_pitch, curr_yaw))
+        rospy.logwarn("RPY current_orientation"+
+                       str(curr_roll, curr_pitch, curr_yaw))
         rospy.logwarn("max_roll"+str(self.max_roll) +
                       ",min_roll="+str(-1*self.max_roll))
         rospy.logwarn("max_pitch"+str(self.max_pitch) +
@@ -428,19 +433,21 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
 
         return has_flipped
 
-    def get_distance_from_desired_point(self, current_position):
+    def self.get_dist_des_point(self, current_pos):
         """
         Calculates the distance from the current position to the desired point
         :param start_point:
         :return:
         """
-        curr_position = np.array([current_position.x, current_position.y, current_position.z])
-        des_position = np.array([self.desired_pose.pose.position.x,\
-                                self.desired_pose.pose.position.y,\
-                                self.desired_pose.pose.position.z])
-        distance = self.get_distance_between_points(curr_position, des_position)
+        curr_position = np.array([current_position.x, 
+                                  current_position.y, 
+                                  current_position.z])
+        des_position = np.array([self.desired_pose.position.x,\
+                                self.desired_pose.position.y,\
+                                self.desired_pose.position.z])
+        dist = self.get_distance_between_points(curr_position, des_position)
 
-        return distance
+        return dist
 
     def get_distance_between_points(self, p_start, p_end):
         """
@@ -455,33 +462,36 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
 
         return distance
 
-    def get_difference_from_desired_orientation(self, current_orientation):
+    def get_diff_des_orient(self, current_orientation):
         """
         Calculates the distance from the current position to the desired point
         :param start_point:
         :return:
         """
-        curr_orientation = np.array([current_orientation.w, current_orientation.x, current_orientation.y, current_orientation.z])
+        curr_orientation = np.array([current_orientation.w, 
+                                     current_orientation.x, 
+                                     current_orientation.y, 
+                                     current_orientation.z])
         des_orientation = np.array([self.desired_pose.pose.orientation.w,\
                                 self.desired_pose.pose.orientation.x,\
                                 self.desired_pose.pose.orientation.y,\
                                 self.desired_pose.pose.orientation.z])
-        difference = self.get_difference_between_orientations(curr_orientation, des_orientation)
+        diff = self.get_diff_btw_orient(curr_orientation, des_orientation)
 
         return difference
     
-    def get_difference_between_orientations(self, ostart, o_end):
+    def get_diff_btw_orient(self, ostart, o_end):
         """
         Given an orientation Object, get difference from current orientation
         :param p_end:
         :return:
         """
-
+        ostart_norm_sq = np.dot(ostart, ostart)
         if self.geo_distance == True:   #<-- Geodesic distance
-            if np.dot(ostart, ostart) > 0:
-                ostart_conj = np.array((ostart[0], -1*ostart[1:4])) / np.dot(ostart, ostart)
+            if ostart_norm_sq > 0:
+                ostart_conj=np.array((ostart[0],-1*ostart[1:4]))/ostart_norm_sq
             else:
-                rospy.logerr("can not compute the orientation difference of a quaternion with 0 norm")
+                rospy.logerr("can not compute for a quaternion with 0 norm")
                 return float('NaN')
         
             o_product = ostart_conj * o_end
@@ -493,15 +503,16 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
             tolerance = 1e-17
             if o_product_norm < tolerance:
                 # 0 quaternion - undefined
-                o_diff = np.array([-float('inf'), float('nan')*o_product_vector])
+                o_diff= np.array([-float('inf'),float('nan')*o_product_vector])
             if v_product_norm < tolerance:
                 # real quaternions - no imaginary part
                 o_diff = np.array([log(o_product_norm),0,0,0])
             vec = o_product_vector / v_product_norm
-            o_diff = np.array(log(o_product_norm), acos(o_product[0]/o_product_norm)*vec)
+            o_diff = np.array(log(o_product_norm), 
+                              acos(o_product[0]/o_product_norm)*vec)
 
-            difference = sqrt(np.dot(o_diff, o_diff))
-            return difference
+            diff = sqrt(np.dot(o_diff, o_diff))
+            return diff
 
         else: #<-- Absolute distance
             ostart_minus_o_end = ostart - o_end
@@ -512,13 +523,3 @@ class ParrotDroneGotoEnv(mav_drone_env.parrotdroneEnv):
                 return d_minus
             else:
                 return d_plus
-
-    """ def get_orientation_euler(self, quaternion_vector):
-        # We convert from quaternions to euler
-        orientation_list = [quaternion_vector.x,
-                            quaternion_vector.y,
-                            quaternion_vector.z,
-                            quaternion_vector.w]
-
-        roll, pitch, yaw = euler_from_quaternion(orientation_list)
-        return roll, pitch, yaw """
