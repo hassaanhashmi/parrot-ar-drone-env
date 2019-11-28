@@ -10,3 +10,4 @@ src/parrot_ardrone_rl/training_results/
 .vscode
 *.pyc
 .env/
+tmp/
