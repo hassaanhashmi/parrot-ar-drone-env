@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from gazebo_msgs.msg import ODEPhysics
-from gazebo_msgs.src import DeleteModel
+from gazebo_msgs.srv import DeleteModel
 from gazebo_msgs.srv import SetPhysicsProperties, SetPhysicsPropertiesRequest
 from geometry_msgs.msg import Vector3
 import rospy

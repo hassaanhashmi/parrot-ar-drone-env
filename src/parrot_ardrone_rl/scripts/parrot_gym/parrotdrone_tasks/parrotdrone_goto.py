@@ -3,12 +3,13 @@ import rospy
 import rospkg
 import rosparam
 import numpy as np
+from math import sqrt, acos, log
 from gym.spaces import Box, Tuple
 from parrotdrone_env import ParrotDroneEnv
 from gym.envs.registration import register
 from geometry_msgs.msg import Point, Pose, Twist, Vector3
 from geometry_msgs.msg import Vector3
-from tf.transformations import quaternion_to_euler
+from tf.transformations import euler_from_quaternion
 from roslauncher import ROSLauncher
 import os
 
@@ -48,7 +49,7 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         vv_range = rospy.get_param('/parrotdrone/lz_vel_range')
         rv_range = rospy.get_param('/parrotdrone/rot_vel_range')
         
-        self.action_low= np.array([-hv_range, -hv_range, -vv_range, -rv_range])
+        self.action_low= np.array([-1*hv_range, -1*hv_range, -1*vv_range, -1*rv_range])
         self.action_high = np.array([hv_range, hv_range, vv_range, rv_range])
         self.action_space=Box(low=self.action_low, high=self.action_high,
                                     dtype=np.float32)
@@ -203,8 +204,8 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         curr_position = self.current_gt_pose.position
         self.prev_dist_des_point = self.get_dist_des_point(curr_position)
 
-        # self.prev_diff_des_orient = \
-        # self.get_diff_des_orient(self.current_gt_pose.orientation)
+        self.prev_diff_des_orient = \
+        self.get_diff_des_orient(self.current_gt_pose.orientation)
 
     def _set_action(self, action):
         """
@@ -216,13 +217,13 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         rospy.logdebug("Start Set Action ==>"+str(action))
         # We convert the actions to speed movements to send to the 
         # parent class of Parrot
-        action_vel = TwistStamped()
-        action_vel.twist.linear.x   = action[0]
-        action_vel.twist.linear.y   = action[1]
-        action_vel.twist.linear.z   = action[2]
-        action_vel.twist.angular.x  = 0.0
-        action_vel.twist.angular.y  = 0.0
-        action_vel.twist.angular.z  = action[3]
+        action_vel = Twist()
+        action_vel.linear.x   = action[0]
+        action_vel.linear.y   = action[1]
+        action_vel.linear.z   = action[2]
+        action_vel.angular.x  = 0.0
+        action_vel.angular.y  = 0.0
+        action_vel.angular.z  = action[3]
         
         # We tell drone the linear and angular velocities to set to 
         # execute
@@ -311,17 +312,17 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
 
     def _compute_reward(self, observations, done):
         
-        current_pose = PoseStamped()
-        current_pose.pose.position.x    = observations[0]
-        current_pose.pose.position.y    = observations[1]
-        current_pose.pose.position.z    = observations[2]
-        current_pose.pose.orientation.w = observations[3]
-        current_pose.pose.orientation.x = observations[4]
-        current_pose.pose.orientation.y = observations[5]
-        current_pose.pose.orientation.z = observations[6]
+        current_pose = Pose()
+        current_pose.position.x    = observations[0]
+        current_pose.position.y    = observations[1]
+        current_pose.position.z    = observations[2]
+        current_pose.orientation.w = observations[3]
+        current_pose.orientation.x = observations[4]
+        current_pose.orientation.y = observations[5]
+        current_pose.orientation.z = observations[6]
         
-        curr_position = current_pose.pose.position
-        curr_orientation = current_pose.pose.orientation
+        curr_position = current_pose.position
+        curr_orientation = current_pose.orientation
 
         dist_des_point = self.get_dist_des_point(curr_position)
         
@@ -343,7 +344,7 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
 
         else:
 
-            if self.is_in_desired_pose(current_position, epsilon=0.5):
+            if self.is_in_desired_pose(curr_position, epsilon=0.5):
                 reward = self.end_episode_points
             else:
                 reward = -1*self.end_episode_points
@@ -365,13 +366,13 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
 
         is_in_desired_pose = False
         current_pose = np.array(current_pose)
-        desired_pose = np.array([self.desired_pose.pose.position.x,\
-                        self.desired_pose.pose.position.y,\
-                        self.desired_pose.pose.position.z,\
-                        self.desired_pose.pose.orientation.w,\
-                        self.desired_pose.pose.orientation.x,\
-                        self.desired_pose.pose.orientation.y,\
-                        self.desired_pose.pose.orientation.z])
+        desired_pose = np.array([self.desired_pose.position.x,\
+                        self.desired_pose.position.y,\
+                        self.desired_pose.position.z,\
+                        self.desired_pose.orientation.w,\
+                        self.desired_pose.orientation.x,\
+                        self.desired_pose.orientation.y,\
+                        self.desired_pose.orientation.z])
         
         desired_pose_plus = desired_pose + epsilon
         desired_pose_minus= desired_pose - epsilon
@@ -411,7 +412,7 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         """
         has_flipped = True
 
-        curr_roll, curr_pitch, curr_yaw = quaternion_to_euler([curr_orient[1],
+        curr_roll, curr_pitch, curr_yaw = euler_from_quaternion([curr_orient[1],
                                                                curr_orient[2],
                                                                curr_orient[3],
                                                                curr_orient[0]])
@@ -427,13 +428,13 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
                       ",min_pitch="+str(-1*self.max_pitch))
         rospy.logwarn("############")
 
-        if curr_roll > -1*self.max_roll and curr.roll <= self.max_roll:
+        if curr_roll > -1*self.max_roll and curr_roll <= self.max_roll:
             if curr_pitch > -1*self.max_pitch and curr_pitch <= self.max_pitch:
                 has_flipped = False
 
         return has_flipped
 
-    def self.get_dist_des_point(self, current_pos):
+    def get_dist_des_point(self, current_position):
         """
         Calculates the distance from the current position to the desired point
         :param start_point:
@@ -472,13 +473,13 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
                                      current_orientation.x, 
                                      current_orientation.y, 
                                      current_orientation.z])
-        des_orientation = np.array([self.desired_pose.pose.orientation.w,\
-                                self.desired_pose.pose.orientation.x,\
-                                self.desired_pose.pose.orientation.y,\
-                                self.desired_pose.pose.orientation.z])
+        des_orientation = np.array([self.desired_pose.orientation.w,\
+                                self.desired_pose.orientation.x,\
+                                self.desired_pose.orientation.y,\
+                                self.desired_pose.orientation.z])
         diff = self.get_diff_btw_orient(curr_orientation, des_orientation)
 
-        return difference
+        return diff
     
     def get_diff_btw_orient(self, ostart, o_end):
         """

@@ -9,3 +9,4 @@ src/parrot_ardrone_rl/training_results/
 .catkin_workspace
 .vscode
 *.pyc
+.env/

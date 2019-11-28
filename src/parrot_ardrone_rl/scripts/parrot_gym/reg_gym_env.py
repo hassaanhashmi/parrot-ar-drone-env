@@ -44,7 +44,6 @@ def Register_Gym_Env(task_env, max_episode_steps_per_episode=10000):
     if result:
         # We check that it was really registered
         supported_gym_envs = [env_spec.id for env_spec in envs.registry.all()]
-        assert (task_env in supported_gym_envs), 
-               "The Task_Robot_ENV given is not Registered ==>" + str(task_env)
+        assert (task_env in supported_gym_envs), "The Task_Robot_ENV given is not Registered ==>" + str(task_env)
 
     return result

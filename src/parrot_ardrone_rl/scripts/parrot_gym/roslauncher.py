@@ -31,14 +31,14 @@ class ROSLauncher(object):
                                          [self._path_launch_file_name])
             self.launch.start()
         else:
-            assert False, "No Package Path was found for ROS apckage ==>" + 
-                          str(self._rospackage_name)
+            assert False, ("No Package Path was found for ROS apckage ==>" + 
+                          str(self._rospackage_name))
 
 
     def restart(self):
         if self._path_launch_file_name == None:
-            assert False, "No Package Path was found for ROS apckage ==>" + 
-                          str(self._rospackage_name)
+            assert False, ("No Package Path was found for ROS apckage ==>" + 
+                          str(self._rospackage_name))
         else:
             self.launch.shutdown()
             #a double check before starting launch file again

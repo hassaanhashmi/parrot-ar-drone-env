@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import sys
 import time
 import numpy as np
@@ -8,12 +9,10 @@ import rospy
 import rospkg
 import rosparam
 # import training environment
-
 sys.path.insert(1, '/home/hmi/Projects/catkin_ws/ParrotDrone-RL-Experiments/'+
-                    'src/parrot_ardrone_rl/scripts/parrot_gym')
+                'src/parrot_ardrone_rl/scripts/parrot_gym')
 from roscore_handler import Roscore
 from make_gym_env import GymMake
-
 
 if __name__ == '__main__':
     roscore = Roscore()
@@ -35,7 +34,7 @@ if __name__ == '__main__':
 
     last_time_steps = np.ndarray(0)
 
-    
+
     nepisodes = 500
     nsteps = 1000
 
