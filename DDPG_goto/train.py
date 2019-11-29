@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # Init Gym ENV
     task_env = 'ParrotDroneGoto-v0'
     env = GymMake(task_env)
-    #rospy.loginfo("Gym environment done")
+    rospy.loginfo("Gym environment done")
 
     # Set the logging system
     # rospack = rospkg.RosPack()

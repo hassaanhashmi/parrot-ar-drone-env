@@ -1,7 +1,16 @@
 import os
 import numpy as np
 import tensorflow.compat.v1 as tf
-from tensorflow.compat.v1.initializers import random_uniform
+from tensorflow.compat.v1.keras.layers import Dense as k_dense
+from tensorflow.compat.v1.keras.layers import Conv2D as k_conv2d
+from tensorflow.compat.v1.keras.activations import relu as k_relu
+from tensorflow.compat.v1.keras.layers import Flatten as k_flatten
+from tensorflow.compat.v1.keras.optimizers import Adam as k_adam
+from tensorflow.compat.v1.keras.losses import mean_squared_error as k_mse
+from tensorflow.compat.v1.keras.layers import BatchNormalization as k_batch_norm
+from tensorflow.compat.v1.keras.initializers import random_uniform as k_rand_uniform
+from tensorflow.compat.v1.keras.regularizers import l2 as k_l2
+
 tf.disable_v2_behavior()
 
 class Critic(object):
@@ -11,23 +20,64 @@ class Critic(object):
         self.n_actions = n_actions
         self.net_name = name
         self.input_dims = input_dims
+
         self.conv1_filters = 32
         self.conv1_kernel_size = 3
+        c1 = 1/np.sqrt(self.conv1_filters*(self.conv1_kernel_size+1))
+        self.conv_layer_1 = k_conv2d(filters=self.conv1_filters,
+                                kernel_size=self.conv1_kernel_size,
+                                kernel_initializer=k_rand_uniform(-c1, c1),
+                                bias_initializer=k_rand_uniform(-c1, c1))
+
         self.conv2_filters = 32
         self.conv2_kernel_size = 3
+        c2 = 1/np.sqrt(self.conv2_filters*(self.conv2_kernel_size+1))
+        self.conv_layer_2 = k_conv2d(filters=self.conv2_filters,
+                                kernel_size=self.conv2_kernel_size,
+                                kernel_initializer=k_rand_uniform(-c2, c2),
+                                bias_initializer=k_rand_uniform(-c2, c2))
+
         self.conv3_filters = 32
         self.conv3_kernel_size = 3
+        c3 = 1/np.sqrt(self.conv3_filters*(self.conv3_kernel_size+1))
+        self.conv_layer_3 = k_conv2d(filters=self.conv3_filters,
+                                kernel_size=self.conv3_kernel_size,
+                                kernel_initializer=k_rand_uniform(-c3, c3),
+                                bias_initializer=k_rand_uniform(-c3, c3))
+
         self.fc1_dims = fc1_dims
+        f4 = 1/np.sqrt(self.fc1_dims)
+        self.dense_layer_4_img = k_dense(units=self.fc1_dims,
+                                kernel_initializer=k_rand_uniform(-f4, f4),
+                                bias_initializer=k_rand_uniform(-f4, f4))
+
+        self.dense_layer_4_num = k_dense(units=self.fc1_dims, input_shape=(13,), #
+                                kernel_initializer=k_rand_uniform(-f4, f4),
+                                bias_initializer=k_rand_uniform(-f4, f4))
+
         self.fc2_dims = fc2_dims
-        self.sess = sess
-        self.batch_size = batch_size
-        self.ckpt_dir = ckpt_dir
-        self.build_network()
-        self.params = tf.trainable_variables(scope=self.net_name)
-        self.saver = tf.train.Saver()
-        self.checkpoint_file = os.path.join(ckpt_dir, name+'_ddpg.ckpt')
-        self.optimizer = tf.train.AdamOptimizer(self.lr)
-        self.optimize_loss = self.optimizer.minimize(self.loss)
+        f5 = 1/np.sqrt(self.fc2_dims)
+        self.dense_layer_5 = k_dense(units=self.fc2_dims,
+                                kernel_initializer=k_rand_uniform(-f5, f5),
+                                bias_initializer=k_rand_uniform(-f5, f5))
+
+        f6 = 0.0003
+        self.dense_layer_6 = k_dense(units=1,
+                                     kernel_initializer=k_rand_uniform(-f6, f6),
+                                     bias_initializer=k_rand_uniform(-f6, f6),
+                                     kernel_regularizer=k_l2(0.01))
+
+        for i, d in enumerate(["/GPU:0", "/GPU:1"]):
+            with tf.device(d):
+                self.sess = sess
+                self.batch_size = batch_size
+                self.ckpt_dir = ckpt_dir
+                self.build_network()
+                self.params = tf.trainable_variables(scope=self.net_name)
+                self.saver = tf.train.Saver()
+                self.checkpoint_file = os.path.join(ckpt_dir, name+'_ddpg.ckpt')
+                self.optimize_loss = k_adam(self.lr).minimize(self.loss,
+                                                              var_list=self.params)
 
     def build_network(self):
         with tf.variable_scope(self.net_name):
@@ -37,6 +87,7 @@ class Critic(object):
             self.img_input = tf.placeholder(tf.float32,
                                         shape=[None, *self.input_dims[1]],
                                         name='img_inputs')
+
             self.actions_ph = tf.placeholder(tf.float32,
                                                 shape=[None, self.n_actions],
                                                 name='actions')
@@ -45,70 +96,42 @@ class Critic(object):
                                             name='targets')
             
             #Conv2D 1
-            c1 = 1/np.sqrt(self.conv1_filters*(self.conv1_kernel_size+1))
-            conv1 = tf.keras.layers.Conv2D(filters=self.conv1_filters,
-                                    kernel_size=self.conv1_kernel_size,
-                                    kernel_initializer=random_uniform(-c1, c1),
-                                    bias_initializer=random_uniform(-c1, c1))(self.img_input)
-            batch1 = tf.layers.batch_normalization(conv1)
-            layer1_activation = tf.nn.relu(batch1)
+            conv1 = self.conv_layer_1(self.img_input)
+            batch1 = k_batch_norm()(conv1)
+            layer1_activation = k_relu(batch1)
 
             #Conv2D 2
-            c2 = 1/np.sqrt(self.conv2_filters*(self.conv2_kernel_size+1))
-            conv2 = tf.keras.layers.Conv2D(filters=self.conv2_filters,
-                                    kernel_size=self.conv2_kernel_size,
-                                    kernel_initializer=random_uniform(-c2, c2),
-                                    bias_initializer=random_uniform(-c2, c2))(layer1_activation)
-            batch2 = tf.layers.batch_normalization(conv2)
-            layer2_activation = tf.nn.relu(batch2)
+            conv2 = self.conv_layer_2(layer1_activation)
+            batch2 = k_batch_norm()(conv2)
+            layer2_activation = k_relu(batch2)
             
             #Conv2D 3
-            c3 = 1/np.sqrt(self.conv3_filters*(self.conv3_kernel_size+1))
-            conv3 = tf.keras.layers.Conv2D(filters=self.conv3_filters,
-                                    kernel_size=self.conv3_kernel_size,
-                                    kernel_initializer=random_uniform(-c3, c3),
-                                    bias_initializer=random_uniform(-c3, c3))(layer2_activation)
-            batch3 = tf.layers.batch_normalization(conv1)
-            layer3_activation = tf.nn.relu(batch3)
-            layer3_flat = tf.layers.flatten(layer3_activation)
+            conv3 = self.conv_layer_3(layer2_activation)
+            batch3 = k_batch_norm()(conv3)
+            layer3_activation = k_relu(batch3)
+            layer3_flat = k_flatten()(layer3_activation)
 
-            #Dense 4a Flat Image Input
-            f1 = 1/np.sqrt(self.fc1_dims)
-            img_in = tf.layers.dense(layer3_flat, units=self.fc1_dims,
-                                        kernel_initializer=random_uniform(-f1, f1),
-                                        bias_initializer=random_uniform(-f1, f1))
-            img_batch = tf.layers.batch_normalization(img_in)
-            
-            #Dense 4b Numeric Input
-            dense1 = tf.layers.dense(self.num_input, units=self.fc1_dims,
-                                    kernel_initializer=random_uniform(-f1, f1),
-                                    bias_initializer=random_uniform(-f1, f1))
-            batch4 = tf.layers.batch_normalization(dense1)
-            
-            #Dense 4a + 4b
-            input_batch = tf.nn.relu(tf.add(batch4, img_batch))
-            layer4_activation = tf.nn.relu(input_batch)
+            #Dense 4 Flattened Image Input + Numeric Input
+            img_in = self.dense_layer_4_img(layer3_flat)
+            num_in = self.dense_layer_4_num(self.num_input)
+            img_batch = k_batch_norm()(img_in)
+            batch4 = k_batch_norm()(num_in)
+            input_batch = k_relu(tf.add(batch4, img_batch))
+            layer4_activation = k_relu(input_batch)
 
             #Dense 5
-            f2 = 1/np.sqrt(self.fc2_dims)
-            dense2 = tf.layers.dense(layer4_activation, units=self.fc2_dims,
-                                    kernel_initializer=random_uniform(-f2, f2),
-                                    bias_initializer=random_uniform(-f2, f2))
-            batch5 = tf.layers.batch_normalization(dense2)
-            layer5_activation = tf.nn.relu(batch5)
+            dense5 = self.dense_layer_5(layer4_activation)
+            batch5 = k_batch_norm()(dense5)
+            layer5_activation = k_relu(batch5)
 
-            action_in = tf.layers.dense(self.actions_ph, units=self.fc2_dims,
-                                        activation='relu')
-            state_actions = tf.nn.relu(tf.add(batch2, action_in))
+            action_in = k_dense(units=self.fc2_dims, input_shape=(self.n_actions,),
+                                activation='relu')(self.actions_ph)
+            state_actions = k_relu(tf.add(batch5, action_in))
 
             #Dense 6 Q-values
-            f3 = 0.0003
-            self.q = tf.layers.dense(state_actions, units=1,
-                                    kernel_initializer=random_uniform(-f3, f3),
-                                    bias_initializer=random_uniform(-f3, f3),
-                                    kernel_regularizer=tf.keras.regularizers.l2(0.01))
+            self.q = self.dense_layer_6(state_actions)
 
-            self.loss = tf.losses.mean_squared_error(self.q_target, self.q)
+            self.loss = k_mse(self.q_target, self.q)
 
             self.action_gradients = tf.gradients(self.q, self.actions_ph)
 

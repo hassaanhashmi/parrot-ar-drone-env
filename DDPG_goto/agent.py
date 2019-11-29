@@ -13,7 +13,7 @@ from critic import Critic
 
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, env, gamma=0.99,
-                 n_actions=2, max_size=1000000, layer1_size=400,
+                 n_actions=2, max_size=10000, layer1_size=400,
                  layer2_size=300, batch_size=64):
         
         self.gamma = gamma
@@ -70,9 +70,9 @@ class Agent(object):
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
     
-    def choose_action(self, state):
-        state1 = state[0][np.newaxis, :]
-        state2 = state[1][np.newaxis, :]
+    def choose_action(self, state1, state2):
+        state1 = state1[np.newaxis, :]
+        state2 = state2[np.newaxis, :]
         state = [state1, state2]
         mu = self.actor.predict(state)
         noise = self.noise()
@@ -100,7 +100,7 @@ class Agent(object):
 
         # a = mu(s_i)
         a_outs = self.actor.predict(state)
-        # ∇_a Q(s, a|θ^Q)
+        # gradients of Q w.r.t actions
         grads = self.critic.get_action_gradients(state, a_outs)
 
         self.actor.train(state, grads[0])
