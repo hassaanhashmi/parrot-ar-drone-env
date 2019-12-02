@@ -15,17 +15,17 @@ sys.path.insert(1, '/home/hmi/Projects/catkin_ws/ParrotDrone-RL-Experiments/src/
 from make_gym_env import GymMake
 from roscore_handler import Roscore
 
-
 if __name__ == '__main__':
-    roscore = Roscore()
-    roscore.run()
-    time.sleep(1)
-    rospy.init_node('parrotdrone_test', anonymous=True, log_level=rospy.WARN)
+    # roscore = Roscore()
+    # roscore.run()
+    # time.sleep(1)
+    # rospy.init_node('parrotdrone_test', anonymous=True, log_level=rospy.WARN)
 
     # Init Gym ENV
-    task_env = 'ParrotDroneGoto-v0'
-    env = GymMake(task_env)
-    rospy.loginfo("Gym environment done")
+    # task_env = 'ParrotDroneGoto-v0'
+    # env = GymMake(task_env)
+    # rospy.loginfo("Gym environment done")
+    env = gym.make('Pendulum-v0')
 
     # Set the logging system
     # rospack = rospkg.RosPack()
@@ -34,9 +34,9 @@ if __name__ == '__main__':
     # env = wrappers.Monitor(env, outdir, force=True)
     # rospy.loginfo("Monitor Wrapper started")
 
-    obs_dims = [[13],[640,360,3]]
+    obs_dims = [[13],[128,72,3]]
     agent = Agent(alpha=0.00005, beta=0.0005, input_dims=obs_dims, tau=0.001,
-                  env=env, batch_size=64, layer1_size=200, layer2_size=200,
+                  env=env, batch_size=32, layer1_size=200, layer2_size=200,
                   n_actions=4)
     score_history = []
     np.random.seed(0)
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         if i+1 % 200 == 0:
             agent.save_models()
     env.close()
-    roscore.terminate()
+    #roscore.terminate()
     filename = 'ParrotDrone.png'
     plot_learning(score_history, filename, window=100)
     agent.save_models()
