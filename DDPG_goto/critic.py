@@ -34,7 +34,7 @@ class Critic(object):
         self.fc1_dims = fc1_dims
         self.fc2_dims = fc1_dims
         
-        with tf.device('/device:GPU:1'):
+        with tf.device('/device:GPU:0'):
             self.build_network()
             self.params = tf.trainable_variables(scope=self.net_name)
             self.optimize_loss = v1_Adam(self.lr).minimize(self.loss)
@@ -48,7 +48,7 @@ class Critic(object):
             self.img_input = tf.placeholder(tf.float32,
                                         shape=[None, *self.input_dims[1]],
                                         name='img_inputs')
-            self.img_size = tf.constant([128,72],dtype=tf.int32)
+            self.img_size = tf.constant([45,80],dtype=tf.int32)
 
             self.actions_ph = tf.placeholder(tf.float32,
                                                 shape=[None, self.n_actions],
@@ -100,7 +100,8 @@ class Critic(object):
 
             #Conv2D 1
             img_cnn = tf.image.resize(images=self.img_input, size=self.img_size,
-                                      method=ResizeMethod.NEAREST_NEIGHBOR)
+                                      method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+                                      preserve_aspect_ratio=True)
             conv1 = self.conv_layer_1(img_cnn)
             batch1 = k_batch_norm()(conv1)
             layer1_activation = k_relu(batch1)
@@ -147,7 +148,7 @@ class Critic(object):
                                         self.actions_ph: actions})
 
     def train(self, inputs, actions, q_target):
-        with tf.device('/device:GPU:1'):
+        with tf.device('/device:GPU:0'):
             return self.sess.run(self.optimize_loss,
                              feed_dict={self.num_input: inputs[0],
                                         self.img_input: inputs[1],
@@ -155,7 +156,7 @@ class Critic(object):
                                         self.q_target: q_target})
 
     def get_action_gradients(self, inputs, actions):
-        with tf.device('/device:GPU:1'):
+        with tf.device('/device:GPU:0'):
             return self.sess.run(self.action_gradients,
                              feed_dict={self.num_input: inputs[0],
                                         self.img_input: inputs[1],

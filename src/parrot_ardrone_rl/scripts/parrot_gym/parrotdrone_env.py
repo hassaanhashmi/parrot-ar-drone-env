@@ -46,7 +46,6 @@ class ParrotDroneEnv(RosGazeboEnv):
 
 #Callback functions for Topic Subscribers uesd by TASK environments
     def _front_camera_cb(self, msg):
-        self._current_front_camera = Image()
         try:
             cv_image = CvBridge().imgmsg_to_cv2(msg, desired_encoding="rgb8")
         except CvBridgeError as cv_error:

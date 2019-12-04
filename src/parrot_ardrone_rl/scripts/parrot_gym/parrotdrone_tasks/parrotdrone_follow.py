@@ -280,7 +280,7 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         has_reached_des_pose    = self.is_in_desired_pose(current_pose, 
                                                      self.desired_pose_epsilon)
 
-        rospy.logwarn(">>>>>> DONE RESULTS <<<<<")
+        #rospy.logwarn(">>>>>> DONE RESULTS <<<<<")
 
         if not is_inside_workspace_now:
             rospy.logerr("Drone is outside workspace")
@@ -304,8 +304,6 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
 
         if episode_done:
             rospy.logerr("episode_done====>"+str(episode_done))
-        else:
-            rospy.logwarn("episode running! \n")
 
         return episode_done
 
@@ -418,14 +416,14 @@ class ParrotDroneGotoEnv(ParrotDroneEnv):
         self.max_roll = rospy.get_param("/parrotdrone/max_roll")
         self.max_pitch = rospy.get_param("/parrotdrone/max_pitch")
 
-        rospy.logwarn("#### HAS FLIPPED? ########")
-        rospy.logwarn("RPY current_orientation"+
-                       str(curr_roll, curr_pitch, curr_yaw))
-        rospy.logwarn("max_roll"+str(self.max_roll) +
-                      ",min_roll="+str(-1*self.max_roll))
-        rospy.logwarn("max_pitch"+str(self.max_pitch) +
-                      ",min_pitch="+str(-1*self.max_pitch))
-        rospy.logwarn("############")
+        # rospy.logwarn("#### HAS FLIPPED? ########")
+        # rospy.logwarn("RPY current_orientation"+
+        #                str(curr_roll, curr_pitch, curr_yaw))
+        # rospy.logwarn("max_roll"+str(self.max_roll) +
+        #               ",min_roll="+str(-1*self.max_roll))
+        # rospy.logwarn("max_pitch"+str(self.max_pitch) +
+        #               ",min_pitch="+str(-1*self.max_pitch))
+        # rospy.logwarn("############")
 
         if curr_roll > -1*self.max_roll and curr.roll <= self.max_roll:
             if curr_pitch > -1*self.max_pitch and curr_pitch <= self.max_pitch:

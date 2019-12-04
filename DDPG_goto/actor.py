@@ -33,7 +33,7 @@ class Actor(object):
         self.fc1_dims = fc1_dims
         self.fc2_dims = fc1_dims
 
-        with tf.device('/device:GPU:0'):
+        with tf.device('/device:GPU:1'):
             self.build_network()
             self.params = tf.trainable_variables(scope=self.net_name)
             self.unnormalized_actor_gradients = tf.gradients(self.mu, self.params,
@@ -53,7 +53,7 @@ class Actor(object):
             self.img_input = tf.placeholder(tf.float32,
                                         shape=[None, *self.input_dims[1]],
                                         name='img_inputs')
-            self.img_size = tf.constant([128,72],dtype=tf.int32)
+            self.img_size = tf.constant([45,80],dtype=tf.int32)
 
             self.action_gradient = tf.placeholder(tf.float32,
                                         shape=[None, self.n_actions],
@@ -99,7 +99,8 @@ class Actor(object):
             #The Model
             #Conv2D 1
             img_cnn = tf.image.resize(images=self.img_input, size=self.img_size,
-                                      method=ResizeMethod.NEAREST_NEIGHBOR)
+                                      method=tf.image.ResizeMethod.NEAREST_NEIGHBOR,
+                                      preserve_aspect_ratio=True)
             conv1 = self.conv_layer_1(img_cnn)
             batch1 = k_batch_norm()(conv1)
             layer1_activation = k_relu(batch1)
@@ -133,14 +134,14 @@ class Actor(object):
             self.mu = tf.math.multiply(mu, self.action_bound)
 
     def predict(self, inputs):
-        with tf.device('/device:GPU:0'):
-            return self.sess.run(self.mu, feed_dict={self.net_input: inputs[0],
-                                                 self.img_input: inputs[1]})
+        with tf.device('/device:GPU:1'):
+            return self.sess.run(self.mu, feed_dict={self.num_input: inputs[0],
+                                                     self.img_input: inputs[1]})
 
     def train(self, inputs, gradients):
-        with tf.device('/device:GPU:0'):
+        with tf.device('/device:GPU:1'):
             self.sess.run(self.optimize,
-                            feed_dict={self.net_input: inputs[0],
+                            feed_dict={self.num_input: inputs[0],
                                        self.img_input: inputs[1],
                                        self.action_gradient: gradients})
 

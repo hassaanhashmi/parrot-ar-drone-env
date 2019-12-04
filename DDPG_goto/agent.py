@@ -13,9 +13,9 @@ tf.disable_v2_behavior()
 
 class Agent(object):
     def __init__(self, alpha, beta, input_dims, tau, env, gamma=0.99,
-                 n_actions=2, max_size=10000, layer1_size=400,
+                 max_size=10000, layer1_size=400,
                  layer2_size=300, batch_size=64):
-        
+        n_actions = env.action_space.shape[0]
         self.gamma = gamma
         self.tau = tau
         self.memory = ReplayBuffer(max_size, input_dims, n_actions)
@@ -43,23 +43,16 @@ class Agent(object):
         self.noise = OUActionNoise(mu=np.zeros(n_actions))
 
 
-        # self.update_actor = [self.target_actor.params[i].assign(
-        #                      tf.multiply(self.actor.params[i], self.tau) +
-        #                      tf.multiply(self.target_actor.params[i], 1. -self.tau))
-        #                      for i in range(len(self.target_actor.params))]
-        actor_params = len(self.target_actor.params)
-        self.update_actor = [(tf.multiply(self.actor.params[i], self.tau) + 
+        self.update_actor = [self.target_actor.params[i].assign(
+                             tf.multiply(self.actor.params[i], self.tau) +
                              tf.multiply(self.target_actor.params[i], 1. -self.tau))
-                             for i in range(actor_params)]
+                             for i in range(len(self.target_actor.params))]
         
-        # self.update_critic = [self.target_critic.params[i].assign(
-        #                       tf.multiply(self.critic.params[i], self.tau) +
-        #                       tf.multiply(self.target_critic.params[i], 1. -self.tau))
-        #                                         for i in range(len(self.target_critic.params))]
-        critic_params = len(self.target_critic.params)
-        self.update_critic = [(tf.multiply(self.critic.params[i], self.tau) +
+        
+        self.update_critic = [self.target_critic.params[i].assign(
+                              tf.multiply(self.critic.params[i], self.tau) +
                               tf.multiply(self.target_critic.params[i], 1. -self.tau))
-                              for i in range(critic_params)]
+                                                for i in range(len(self.target_critic.params))]
         
         self.sess.run(tf.global_variables_initializer())
 
@@ -71,8 +64,8 @@ class Agent(object):
                 if first:
                     old_tau = self.tau
                     self.tau = 1.0
-                    self.target_actor.sess.run(self.target_actor.params.assign(self.update_actor))
-                    self.target_critic.sess.run(self.target_critic.params.assign(self.update_critic))
+                    self.target_actor.sess.run(self.update_actor)
+                    self.target_critic.sess.run(self.update_critic)
                     self.tau = old_tau
                 else:
                     self.target_critic.sess.run(self.update_critic)
@@ -81,9 +74,11 @@ class Agent(object):
     def remember(self, state, action, reward, new_state, done):
         self.memory.store_transition(state, action, reward, new_state, done)
     
-    def choose_action(self, state1, state2):
-        state1 = state1[np.newaxis, :]
-        state2 = state2[np.newaxis, :]
+    def choose_action(self, state):
+        # print("State[0]: ",state[0].shape)
+        # print("State[1]: ",state[1].shape)
+        state1 = state[0][np.newaxis, :]
+        state2 = state[1][np.newaxis, :]
         state = [state1, state2]
         for _, d in enumerate(["/device:GPU:0", "/device:GPU:1"]):
             with tf.device(d):
