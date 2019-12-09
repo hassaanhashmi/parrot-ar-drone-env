@@ -1,5 +1,4 @@
-# ParrotDrone-RL-Experiments
-A ROS package to setup a Parrot AR done OpenAI Gym environment for Reinforcement Learning experiments
+A ROS package to setup a Parrot AR drone OpenAI Gym environment for Reinforcement Learning experiments
 
 #### Building Workspace in python3:
 After cloning the repository, follow the following steps:
