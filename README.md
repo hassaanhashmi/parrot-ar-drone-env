@@ -3,7 +3,7 @@ A ROS package to setup a Parrot AR drone OpenAI Gym environment for Reinforcemen
 #### Building Workspace in python3:
 After cloning the repository, follow the following steps:
 ```
-cd ParrotDrone-RL-Experiments
+cd parrot-ar-drone-env
 wstool up
 rosdep install --from-paths src --ignore-src -y -r
 catkin_make --cmake-args \
